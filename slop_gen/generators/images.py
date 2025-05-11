@@ -1,36 +1,27 @@
 import os
 from PIL import Image
-from io import BytesIO
 from slop_gen.utils.api_utils import generate_images_with_imagen
+import requests
+import base64
+from io import BytesIO
 
 def generate_images(lines, output_dir="assets/images"):
     """
-    Generates one image per story line using Google's Imagen 3.
-
-    Args:
-        lines (list[str]): List of story lines.
-        output_dir (str): Directory to save images (default: assets/images).
-
-    Returns:
-        list[str]: List of file paths to the generated images.
+    Generates and saves one image per story line.
+    Returns a list of file paths (or None on failure).
     """
     os.makedirs(output_dir, exist_ok=True)
-    image_paths = []
+    saved_paths = []
 
-    for i, line in enumerate(lines):
+    for idx, line in enumerate(lines):
         try:
-            imgs = generate_images_with_imagen(
-                prompt=line,
-                number_of_images=1,
-                aspect_ratio="3:4"
-            )
-            img_bytes = imgs[0].image.image_bytes
-            image = Image.open(BytesIO(img_bytes))
-            image_path = os.path.join(output_dir, f"image_{i+1}.png")
-            image.save(image_path)
-            image_paths.append(image_path)
+            img_streams = generate_images_with_imagen(prompt=line)
+            image = Image.open(img_streams[0])
+            path = os.path.join(output_dir, f"image_{idx+1}.png")
+            image.save(path)
+            saved_paths.append(path)
         except Exception as e:
-            print(f"❌ Failed to generate image for line {i+1}: {e}")
-            image_paths.append(None)
+            print(f"❌ Failed to generate image for line {idx+1}: {e}")
+            saved_paths.append(None)
 
-    return image_paths
+    return saved_paths

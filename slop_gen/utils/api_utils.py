@@ -5,6 +5,10 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 import google.generativeai as genai
 from google.generativeai import types
+import requests
+import base64
+from io import BytesIO
+from PIL import Image
 
 
 load_dotenv()
@@ -15,44 +19,47 @@ OPENAI_BASE_URL = "https://api.ai.it.cornell.edu/v1"
 
 
 def generate_images_with_imagen(
-    prompt, *, model="imagen-3.0-generate-002", number_of_images=1, aspect_ratio="1:1"
+    prompt,
+    model="google.imagen-3.0-generate",
+    number_of_images=1,
+    aspect_ratio="3:4"
 ):
     """
-    Generate images using Google Cloud's Imagen 3 API.
-
-    Args:
-        prompt (str): The text prompt for image generation.
-        model (str, optional): The Imagen model to use. Defaults to "imagen-3.0-generate-002".
-        number_of_images (int, optional): Number of images to generate (1-4). Defaults to 1.
-        aspect_ratio (str, optional): Aspect ratio of generated images.
-                                    Supported values: "1:1", "3:4", "4:3", "9:16", "16:9".
-                                    Defaults to "1:1".
-
-    Returns:
-        list: List of generated image objects that can be accessed for image data.
-              Each object has a 'image' attribute with 'image_bytes' that can be used
-              with PIL's Image.open(BytesIO(image_bytes)) to display or save.
+    Generate images via the Cornell proxy’s Imagen endpoint.
+    Returns a list of BytesIO objects for each image.
     """
-    if GEMINI_API_KEY is None:
-        raise ValueError("GEMINI_API_KEY environment variable not set")
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY not set")
 
-    if not 1 <= number_of_images <= 4:
-        raise ValueError("number_of_images must be between 1 and 4")
+    url = f"{OPENAI_BASE_URL}/images/generations"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "num_images": number_of_images,
+        "aspect_ratio": aspect_ratio
+    }
 
-    valid_aspect_ratios = ["1:1", "3:4", "4:3", "9:16", "16:9"]
-    if aspect_ratio not in valid_aspect_ratios:
-        raise ValueError(f"aspect_ratio must be one of {valid_aspect_ratios}")
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
+    data = response.json().get("data", [])
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    response = client.models.generate_images(
-        model=model,
-        prompt=prompt,
-        config=types.GenerateImagesConfig(
-            number_of_images=number_of_images, aspect_ratio=aspect_ratio
-        ),
-    )
+    images = []
+    for img in data:
+        img_url = img.get("url")
+        if img_url:
+            img_resp = requests.get(img_url)
+            img_resp.raise_for_status()
+            images.append(BytesIO(img_resp.content))
+        elif "b64_json" in img:
+            images.append(BytesIO(base64.b64decode(img["b64_json"])))
+        else:
+            raise RuntimeError("No image data returned for prompt.")
 
-    return response.generated_images
+    return images
 
 
 def openai_chat_api(messages, *, model="anthropic.claude-3.5-sonnet.v2", temperature=0, seed=42):
