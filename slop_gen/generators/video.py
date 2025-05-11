@@ -1,5 +1,6 @@
 import os
-from moviepy import (
+
+from moviepy.editor import (
     ImageClip,
     AudioFileClip,
     TextClip,
@@ -7,52 +8,67 @@ from moviepy import (
     concatenate_videoclips,
 )
 
-
-def create_video(image_paths, audio_paths, output_path="assets/output/final_horror_clip.mp4", story_lines=None):
+def create_video(
+    image_paths: list[str],
+    audio_paths: list[str],
+    output_path: str = "assets/output/final_horror_clip.mp4",
+    story_lines: list[str] | None = None,
+    fps: int = 24,
+    height: int = 720
+) -> None:
     """
-    Combines images, narration, and centered text into a video.
-
-    Args:
-        image_paths (list[str]): List of image file paths.
-        audio_paths (list[str]): List of audio file paths.
-        output_path (str): Output video path.
-        story_lines (list[str], optional): Lines of text to overlay on the images.
+    Combines images, narration audio, and overlaid text into a single video,
+    with a subtle zoom-in effect and very small, centered captions.
     """
     clips = []
 
-    for i, (img, audio) in enumerate(zip(image_paths, audio_paths)):
-        if img is None or audio is None:
-            print(f"⚠️ Skipping frame {i+1} due to missing assets.")
+    for i, (img_path, audio_path) in enumerate(zip(image_paths, audio_paths)):
+        if not img_path or not audio_path:
+            print(f"⚠️ Skipping segment {i+1} – missing image or audio.")
             continue
 
         try:
-            audio_clip = AudioFileClip(audio)
+            # load audio and get its duration
+            audio_clip = AudioFileClip(audio_path)
             duration = audio_clip.duration
 
-            # Load image and scale
-            image_clip = ImageClip(img).set_duration(duration).resize(height=720)
-
-            # Create centered text overlay
-            line = story_lines[i] if story_lines and i < len(story_lines) else ""
-            text_clip = (
-                TextClip(line, fontsize=40, color="white", font="Arial-Bold")
-                .set_position("center")
+            # load & resize image, then apply a zoom-in from 100% → 120%
+            img_clip = (
+                ImageClip(img_path)
                 .set_duration(duration)
-                .margin(top=20, bottom=20, opacity=0)  # Padding
-                .with_stroke(color="black", width=2)  # Improve contrast
+                .resize(height=height)
+                .resize(lambda t: 1 + 0.2 * (t / duration))
             )
 
-            # Composite: image + text + audio
-            video_clip = CompositeVideoClip([image_clip, text_clip]).set_audio(audio_clip)
+            # prepare even smaller, centered text overlay
+            text = (story_lines[i] if story_lines and i < len(story_lines) else "")
+            txt_clip = (
+                TextClip(
+                    text,
+                    fontsize=14,                     # very small text
+                    font="Arial-Bold",
+                    color="white",
+                    stroke_color="black",
+                    stroke_width=1,
+                    method="label"
+                )
+                .set_position(("center", "center"))
+                .set_duration(duration)
+            )
 
-            clips.append(video_clip)
+            # composite image + text + audio
+            segment = CompositeVideoClip([img_clip, txt_clip]).set_audio(audio_clip)
+            clips.append(segment)
 
         except Exception as e:
-            print(f"❌ Failed to process clip {i+1}: {e}")
+            print(f"❌ Error building segment {i+1}: {e}")
 
-    if clips:
-        final_video = concatenate_videoclips(clips, method="compose")
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        final_video.write_videofile(output_path, fps=24)
-    else:
-        print("❌ No clips to compile into video.")
+    if not clips:
+        print("❌ No segments to concatenate. Aborting.")
+        return
+
+    # concatenate and write final video
+    final = concatenate_videoclips(clips, method="compose")
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    final.write_videofile(output_path, fps=fps)
+    print(f"✅ Video written to {output_path}")

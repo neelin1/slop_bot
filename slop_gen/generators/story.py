@@ -1,3 +1,5 @@
+from slop_gen.utils.api_utils import openai_chat_api
+
 def generate_story(num_lines=3):
     """
     Generates a short horror story with `num_lines` parts using the OpenAI API.
