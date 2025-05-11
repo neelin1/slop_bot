@@ -72,6 +72,39 @@ def openai_chat_api(messages, *, model="anthropic.claude-3.5-sonnet.v2", tempera
     )
     return response.choices[0].message.content
 
+    
+    
+def text_to_speech(
+    text: str,
+    model: str = "openai.tts-hd",
+    voice: str = "alloy",
+    fmt: str = "wav"
+) -> bytes:
+    """
+    Call the Cornell proxy Audio API to synthesize `text` and return raw audio bytes.
+    """
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY not set")
+
+    url = f"{OPENAI_BASE_URL}/audio/speech"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "input": text,
+        "voice": voice,
+        "format": fmt
+    }
+
+    resp = requests.post(url, headers=headers, json=payload)
+    resp.raise_for_status()
+    return resp.content
+    
+    
+
+
 
 def openai_chat_api_structured(
     messages, *, model="gpt-4o", temperature=0, seed=42, response_format=None
