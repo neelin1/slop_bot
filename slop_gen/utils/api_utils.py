@@ -11,6 +11,7 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENAI_BASE_URL = "https://api.ai.it.cornell.edu/v1"
 
 
 def generate_images_with_imagen(
@@ -54,10 +55,13 @@ def generate_images_with_imagen(
     return response.generated_images
 
 
-def openai_chat_api(messages, *, model="gpt-4o", temperature=0, seed=42):
-    client = OpenAI(api_key=OPENAI_API_KEY)
+def openai_chat_api(messages, *, model="anthropic.claude-3.5-sonnet.v2", temperature=0, seed=42):
+    client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
     response = client.chat.completions.create(
-        messages=messages, model=model, temperature=temperature, seed=seed
+        messages=messages,
+        model=model,
+        temperature=temperature,
+        seed=seed
     )
     return response.choices[0].message.content
 

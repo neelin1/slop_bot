@@ -1,8 +1,6 @@
-from slop_gen.utils.api_utils import openai_chat_api
-
 def generate_story(num_lines=3):
     """
-    Generates a short horror story with `num_lines` parts using the OpenAI wrapper.
+    Generates a short horror story with `num_lines` parts using the OpenAI API.
     Each line corresponds to one image/narration.
     """
     prompt = (
@@ -17,7 +15,7 @@ def generate_story(num_lines=3):
     ]
 
     try:
-        story_text = openai_chat_api(messages, model="gpt-4", temperature=0.9)
+        story_text = openai_chat_api(messages)
         story_lines = [line.strip() for line in story_text.split('.') if line.strip()]
         return story_lines[:num_lines]
     except Exception as e:
