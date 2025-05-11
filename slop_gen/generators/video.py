@@ -17,7 +17,7 @@ change_settings({ "IMAGEMAGICK_BINARY": "magick" })
 def create_video(
     image_paths: list[str],
     audio_paths: list[str],
-    output_path: str = "assets/output/final_horror_clip.mp4",
+    output_path: str = "assets/output/final_horror_clip_2.mp4",
     story_lines: list[str] | None = None,
     fps: int = 24,
     height: int = 720,
