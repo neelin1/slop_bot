@@ -32,84 +32,145 @@ S_DELTA = 0.1
 
 
 def zoom_in_effect(
-    clip: ImageClip, duration: float, frame_W: int, frame_H: int
+    clip: ImageClip,
+    duration: float,
+    frame_W: int,
+    frame_H: int,
+    img_W: int,
+    img_H: int,
+    offset_x: float,
+    offset_y: float,
 ) -> ImageClip:
-    """Zooms in (e.g., 120% to 130%) and centers the content."""
+    """Zooms in, keeping an initially offset center point of the content centered in the frame."""
     scale_func = lambda t: S_BASE + S_DELTA * (t / duration)
-    return clip.resize(scale_func).set_position("center", "center")
+
+    def pos_func(t):
+        s = scale_func(t)
+        # Target content point (img_W/2 + offset_x, img_H/2 + offset_y) should be at frame center (frame_W/2, frame_H/2)
+        clip_x = frame_W / 2 - s * (img_W / 2 + offset_x)
+        clip_y = frame_H / 2 - s * (img_H / 2 + offset_y)
+        return (clip_x, clip_y)
+
+    return clip.resize(scale_func).set_position(pos_func)
 
 
 def zoom_out_effect(
-    clip: ImageClip, duration: float, frame_W: int, frame_H: int
+    clip: ImageClip,
+    duration: float,
+    frame_W: int,
+    frame_H: int,
+    img_W: int,
+    img_H: int,
+    offset_x: float,
+    offset_y: float,
 ) -> ImageClip:
-    """Zooms out (e.g., 130% to 120%) and centers the content."""
+    """Zooms out, keeping an initially offset center point of the content centered in the frame."""
     scale_func = lambda t: (S_BASE + S_DELTA) - S_DELTA * (t / duration)
-    return clip.resize(scale_func).set_position("center", "center")
+
+    def pos_func(t):
+        s = scale_func(t)
+        clip_x = frame_W / 2 - s * (img_W / 2 + offset_x)
+        clip_y = frame_H / 2 - s * (img_H / 2 + offset_y)
+        return (clip_x, clip_y)
+
+    return clip.resize(scale_func).set_position(pos_func)
 
 
 def zoom_in_top_right_effect(
-    clip: ImageClip, duration: float, frame_W: int, frame_H: int
+    clip: ImageClip,
+    duration: float,
+    frame_W: int,
+    frame_H: int,
+    img_W: int,
+    img_H: int,
+    offset_x: float,
+    offset_y: float,
 ) -> ImageClip:
-    """Zooms in, keeping the top-right corner of the content fixed relative to the frame."""
-    W_clip = clip.w  # Original width of the clip (which is frame_H for square images)
+    """Zooms in, keeping an initially offset top-right point of the content fixed to frame's top-right."""
     scale_func = lambda t: S_BASE + S_DELTA * (t / duration)
 
-    def position_func(t):
+    def pos_func(t):
         s = scale_func(t)
-        # Calculate x so that scaled clip's right edge (x + s*W_clip) aligns with frame_W
-        x_pos = frame_W - (s * W_clip)
-        y_pos = 0  # Keep top edge aligned with frame's top
-        return (x_pos, y_pos)
+        # Target content point (img_W + offset_x, 0 + offset_y) relative to image TL
+        # should be at frame's top-right (frame_W, 0)
+        clip_x = frame_W - s * (img_W + offset_x)
+        clip_y = 0 - s * (0 + offset_y)  # offset_y is from top-left of image
+        return (clip_x, clip_y)
 
-    return clip.resize(scale_func).set_position(position_func)
+    return clip.resize(scale_func).set_position(pos_func)
 
 
 def zoom_out_top_right_effect(
-    clip: ImageClip, duration: float, frame_W: int, frame_H: int
+    clip: ImageClip,
+    duration: float,
+    frame_W: int,
+    frame_H: int,
+    img_W: int,
+    img_H: int,
+    offset_x: float,
+    offset_y: float,
 ) -> ImageClip:
-    """Zooms out, keeping the top-right corner of the content fixed relative to the frame."""
-    W_clip = clip.w  # Original width of the clip
+    """Zooms out, keeping an initially offset top-right point of the content fixed to frame's top-right."""
     scale_func = lambda t: (S_BASE + S_DELTA) - S_DELTA * (t / duration)
 
-    def position_func(t):
+    def pos_func(t):
         s = scale_func(t)
-        x_pos = frame_W - (s * W_clip)
-        y_pos = 0
-        return (x_pos, y_pos)
+        clip_x = frame_W - s * (img_W + offset_x)
+        clip_y = 0 - s * (0 + offset_y)
+        return (clip_x, clip_y)
 
-    return clip.resize(scale_func).set_position(position_func)
+    return clip.resize(scale_func).set_position(pos_func)
 
 
-# Pan effects would also need to accept frame_W, frame_H and be adjusted
-# def pan_left_effect(clip: ImageClip, duration: float, frame_W: int, frame_H: int) -> ImageClip:
-#     """Pans from right to left."""
-#     # Initial clip is frame_H x frame_H. We want to make it wider for panning.
-#     zoomed_clip = clip.resize(width=clip.w * S_BASE) # e.g. 1.2x wider
-#     # Vertically center the zoomed_clip within the frame_H
-#     y_pos = (frame_H - zoomed_clip.h) / 2
-#
-#     def pos_pan_left(t):
-#         # Start: zoomed_clip's left edge at frame's left (0).
-#         # End: zoomed_clip's right edge at frame's right (frame_W).
-#         # So, zoomed_clip's left moves from 0 to frame_W - zoomed_clip.w.
-#         start_x = 0
-#         end_x = frame_W - zoomed_clip.w
-#         current_x = start_x + (end_x - start_x) * (t / duration)
-#         return (current_x, y_pos)
-#
-#     return zoomed_clip.set_position(pos_pan_left)
-#
-# def pan_right_effect(clip: ImageClip, duration: float, frame_W: int, frame_H: int) -> ImageClip:
-#     """Pans from left to right."""
-#     zoomed_clip = clip.resize(width=clip.w * S_BASE)
-#     y_pos = (frame_H - zoomed_clip.h) / 2
-#
-#     def pos_pan_right(t):
-#         start_x = frame_W - zoomed_clip.w
-#         end_x = 0
-#         current_x = start_x + (end_x - start_x) * (t / duration)
-#         return (current_x, y_pos)
-#     return zoomed_clip.set_position(pos_pan_right)
+# Pan effects would also need to accept img_W, img_H, offset_x, offset_y and be adjusted
+def pan_left_to_right_effect(
+    clip: ImageClip,
+    duration: float,
+    frame_W: int,
+    frame_H: int,
+    img_W_clip: int,
+    img_H_clip: int,
+    offset_x_ignored: float,
+    offset_y: float,
+) -> ImageClip:
+    """Pans content from left to right, with no zoom. Uses base clip scaled to frame height."""
+    # clip is img_movie_clip_base, so img_W_clip == img_H_clip == frame_H in current setup
+    # Vertical position based on offset_y (content point img_H_clip/2 + offset_y should be at frame_H/2)
+    # Since img_H_clip == frame_H, y_pos_for_clip = -offset_y
+    y_pos = -offset_y
+
+    def pos_func(t):
+        # Horizontal pan: clip's left edge moves from 0 to (frame_W - img_W_clip)
+        x_start_clip = 0
+        x_end_clip = frame_W - img_W_clip
+        current_x_clip = x_start_clip + (x_end_clip - x_start_clip) * (t / duration)
+        return (current_x_clip, y_pos)
+
+    # No resize, uses the clip as is (which should be img_movie_clip_base)
+    return clip.set_position(pos_func)
+
+
+def pan_right_to_left_effect(
+    clip: ImageClip,
+    duration: float,
+    frame_W: int,
+    frame_H: int,
+    img_W_clip: int,
+    img_H_clip: int,
+    offset_x_ignored: float,
+    offset_y: float,
+) -> ImageClip:
+    """Pans content from right to left, with no zoom. Uses base clip scaled to frame height."""
+    y_pos = -offset_y
+
+    def pos_func(t):
+        # Horizontal pan: clip's left edge moves from (frame_W - img_W_clip) to 0
+        x_start_clip = frame_W - img_W_clip
+        x_end_clip = 0
+        current_x_clip = x_start_clip + (x_end_clip - x_start_clip) * (t / duration)
+        return (current_x_clip, y_pos)
+
+    return clip.set_position(pos_func)
 
 
 # List of available effects
@@ -123,13 +184,15 @@ def zoom_out_top_right_effect(
 #     # pan_right_effect # Disabled for now
 # ]
 # Simpler approach for now, will add more sophisticated pans if these are not enough.
-available_effects: List[Callable[[ImageClip, float, int, int], ImageClip]] = [
+available_effects: List[
+    Callable[[ImageClip, float, int, int, int, int, float, float], ImageClip]
+] = [
     zoom_in_effect,
     zoom_out_effect,
     zoom_in_top_right_effect,
     zoom_out_top_right_effect,
-    # pan_left_effect, # Disabled for now
-    # pan_right_effect # Disabled for now
+    pan_left_to_right_effect,
+    pan_right_to_left_effect,
 ]
 
 
@@ -156,6 +219,12 @@ def create_video_from_assets(
         target_frame_W += 1
 
     print(f"Target video resolution: {target_frame_W}x{target_frame_H} (9:16)")
+
+    # Random factor for initial view offset (percentage of max pannable area)
+    RANDOM_HORIZONTAL_OFFSET_FACTOR = (
+        0.4  # For zoom effects, fraction of pannable width
+    )
+    RANDOM_VERTICAL_OFFSET_FRACTION = 0.1  # For all effects, fraction of image height
 
     if len(image_paths) != len(audio_paths) or len(image_paths) != len(scene_texts):
         print(
@@ -205,16 +274,42 @@ def create_video_from_assets(
                 )  # Image becomes target_frame_H x target_frame_H
             )
 
+            # Get dimensions of the base image clip (which is square target_frame_H x target_frame_H)
+            img_W, img_H = img_movie_clip_base.w, img_movie_clip_base.h
+
+            # Calculate random initial content offsets for this segment
+            # Max pannable content area at S_BASE zoom relative to frame (for X offset of zoom effects)
+            # Ensure these are non-negative if S_BASE makes image smaller than frame (should not happen with S_BASE > 1)
+            max_content_pan_x_for_zoom = max(0, (S_BASE * img_W - target_frame_W) / 2)
+            content_offset_x = (
+                random.uniform(
+                    -RANDOM_HORIZONTAL_OFFSET_FACTOR, RANDOM_HORIZONTAL_OFFSET_FACTOR
+                )
+                * max_content_pan_x_for_zoom
+            )
+
+            # Vertical offset based on a fraction of image height (for all effects)
+            max_abs_vertical_offset = img_H * RANDOM_VERTICAL_OFFSET_FRACTION
+            content_offset_y = random.uniform(
+                -max_abs_vertical_offset, max_abs_vertical_offset
+            )
+
             if zoom_effect:
                 if available_effects:
                     effect_func = random.choice(available_effects)
-                    print(f"Applying effect: {effect_func.__name__} to segment {i+1}")
+                    print(
+                        f"Applying effect: {effect_func.__name__} to segment {i+1} with offset ({content_offset_x:.2f}, {content_offset_y:.2f})"
+                    )
                     try:
                         img_movie_clip_affected = effect_func(
                             img_movie_clip_base,
                             duration,
                             target_frame_W,
                             target_frame_H,
+                            img_W,
+                            img_H,
+                            content_offset_x,
+                            content_offset_y,
                         )
                     except Exception as e_effect:
                         print(
@@ -226,17 +321,37 @@ def create_video_from_assets(
                             duration,
                             target_frame_W,
                             target_frame_H,
+                            img_W,
+                            img_H,
+                            0,
+                            0,  # No offset for fallback
                         )
                 else:  # Fallback if no effects are defined
                     img_movie_clip_affected = zoom_in_effect(
-                        img_movie_clip_base, duration, target_frame_W, target_frame_H
+                        img_movie_clip_base,
+                        duration,
+                        target_frame_W,
+                        target_frame_H,
+                        img_W,
+                        img_H,
+                        0,
+                        0,  # No offset for fallback
                     )
             else:
-                # If no zoom effect, center the base image clip
-                # The base image is HxH, frame is WxF (W<H). Centering will crop sides.
-                img_movie_clip_affected = img_movie_clip_base.set_position(
-                    "center", "center"
+                # If no zoom effect, center the base image clip considering the random offset
+                # The base image is HxH, frame is WxH (W<H).
+                # We need to position it so the (img_center + offset) is at frame_center at S_BASE scale.
+                # Clip position for a static view at S_BASE scale with offset:
+                s_static = S_BASE  # or 1.0 if no zoom effect means no initial zoom beyond fitting
+                clip_x_static = target_frame_W / 2 - s_static * (
+                    img_W / 2 + content_offset_x
                 )
+                clip_y_static = target_frame_H / 2 - s_static * (
+                    img_H / 2 + content_offset_y
+                )
+                img_movie_clip_affected = img_movie_clip_base.resize(
+                    s_static
+                ).set_position((clip_x_static, clip_y_static))
 
             # Text Clip
             text_segments = []
