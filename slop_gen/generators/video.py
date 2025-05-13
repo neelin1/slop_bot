@@ -8,11 +8,24 @@ from moviepy.editor import (
     CompositeVideoClip,
     concatenate_videoclips,
     CompositeAudioClip,
-    vfx
 )
+from moviepy.video.fx import crop, resize  
 from moviepy.config import change_settings
 change_settings({ "IMAGEMAGICK_BINARY": "magick" })
 
+def pan_effect(clip, style, duration):
+    if style == "zoom_in":
+        return clip.resize(lambda t: 1 + 0.05 * t)  # more subtle zoom
+    elif style == "zoom_out":
+        return clip.resize(lambda t: 1.05 - 0.05 * t)
+    elif style == "pan_left":
+        max_pan = 30  # pixels
+        return clip.set_position(lambda t: (int(max_pan * (t / duration)), "center"))
+    elif style == "pan_right":
+        max_pan = 30  # pixels
+        return clip.set_position(lambda t: (int(-max_pan * (t / duration)), "center"))
+    else:
+        return clip
 
 def create_video(
     image_paths: list[str],
@@ -36,12 +49,16 @@ def create_video(
             audio_clip = AudioFileClip(audio_path)
             duration = audio_clip.duration
 
-            img_clip = (
+            style = random.choice(["zoom_in", "zoom_out", "pan_left", "pan_right", "none"])
+            print(f"🎞️ Segment {i+1}: Applying style → {style}")
+
+            base_clip = (
                 ImageClip(img_path)
                 .set_duration(duration)
                 .resize(height=height)
-                .resize(lambda t: 1 + 0.2 * (t / duration))
             )
+
+            img_clip = pan_effect(base_clip, style, duration)
 
             raw_text = story_lines[i] if story_lines and i < len(story_lines) else ""
             wrapped = textwrap.fill(raw_text, width=wrap_width)
