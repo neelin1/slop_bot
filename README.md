@@ -29,7 +29,9 @@ OPENAI_API_KEY=your_openai_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-### Step 4: Run the Tool
+### Step 4: Make an account with FakeYou and configure the API for generation process. This also must be completed to get the unique voices.
+
+### Step 5: Run the Tool
 
 Here's the usage example:
 
