@@ -67,7 +67,8 @@ parameters: Parameters = {
     "video_gen": False,
     "music": True,
     "music_file": "assets/music/house_stark_theme.mp3",
-    "post_processing": [PostProcessing.PAN, PostProcessing.CAPTION],
+    "post_processing": [PostProcessing.PAN],
+    "music_volume": 0.8,
     "high_level_plan": None,
     "scene_descriptions": None,
     "image_paths": None,
@@ -225,7 +226,7 @@ async def main():
             scene_texts=scene_texts,
             output_path=VIDEO_OUTPUT_PATH,
             music_path=music_to_use,
-            # Pass other parameters like fps, height, music_volume, wrap_width, zoom_effect as needed
+            music_volume_param=parameters.get("music_volume"),
         )
     else:
         print(
