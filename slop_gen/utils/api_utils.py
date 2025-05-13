@@ -1,10 +1,12 @@
 import os
+from typing import List
 
 from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, Field
 import google.generativeai as genai
-from google.generativeai import types
+
+# from google.generativeai import types # Keep types under genai namespace
 import requests
 import base64
 from io import BytesIO
@@ -16,6 +18,7 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_BASE_URL = "https://api.ai.it.cornell.edu/v1"
+openai_client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
 
 
 def generate_images_with_imagen(
@@ -59,6 +62,76 @@ def generate_images_with_imagen(
     return images
 
 
+def generate_openai_images_via_proxy(
+    prompt: str,
+    model: str = "gpt-image-1",  # Corresponds to OpenAI's GPT-4o image capabilities
+    n: int = 1,
+    size: str = "1024x1024",  # Default, will be overridden by caller for portrait
+    quality: str = "medium",  # "standard" or "hd" for DALL-E, "low", "medium", "high" for gpt-image-1
+    response_format: str = "b64_json",  # OpenAI default is b64_json or url
+) -> List[BytesIO]:
+    """
+    Generate images using an OpenAI model (e.g., gpt-image-1) via the Cornell proxy.
+    Returns a list of BytesIO objects for each image.
+    """
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY not set")
+
+    url = f"{OPENAI_BASE_URL}/images/generations"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "n": n,
+        "size": size,
+        "quality": quality,
+        "response_format": response_format,
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()  # Raise an exception for HTTP errors
+    data = response.json().get("data", [])
+
+    images = []
+    if not data:
+        raise RuntimeError(
+            f"No image data returned for prompt: {prompt}. Response: {response.text}"
+        )
+
+    for img_item in data:
+        if response_format == "b64_json":
+            b64_content = img_item.get("b64_json")
+            if not b64_content:
+                raise ValueError(
+                    "b64_json format requested but no b64_json field in response item."
+                )
+            try:
+                images.append(BytesIO(base64.b64decode(b64_content)))
+            except Exception as e:
+                raise ValueError(f"Failed to decode base64 content: {e}")
+        elif response_format == "url":
+            img_url = img_item.get("url")
+            if not img_url:
+                raise ValueError(
+                    "url format requested but no url field in response item."
+                )
+            img_resp = requests.get(img_url)
+            img_resp.raise_for_status()
+            images.append(BytesIO(img_resp.content))
+        else:
+            raise ValueError(f"Unsupported response_format: {response_format}")
+
+    if not images:
+        raise RuntimeError(
+            f"Image data was present but failed to process for prompt: {prompt}"
+        )
+
+    return images
+
+
 def openai_chat_api(
     messages, *, model="anthropic.claude-3.5-sonnet.v2", temperature=0, seed=42
 ):
@@ -97,9 +170,8 @@ def openai_chat_api_structured(
     Similar to openai_chat_api, but enforces a structured output
     using the Beta OpenAI API features for structured JSON output.
     """
-    client = OpenAI(api_key=OPENAI_API_KEY)
     # enforces schema adherence with response_format
-    completion = client.beta.chat.completions.parse(
+    completion = openai_client.beta.chat.completions.parse(
         messages=messages,
         model=model,
         temperature=temperature,

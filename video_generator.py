@@ -1,73 +1,139 @@
+from slop_gen.generators.story_gen.planning import (
+    Parameters,
+    PostProcessing,
+    generate_high_level_plan,
+)
+from slop_gen.generators.story_gen.scene_gen import (
+    generate_all_scenes,
+    SceneDescription,
+)
+from slop_gen.generators.story_gen.images import generate_images_for_scenes
+import os
+
 story: str = """
-The pupil looked back at the chalkboard, squinting to try and garner any deeper meaning to the neatly written message.
+Depression is quiet.
 
-Humility
+Depression isn't words, it's the words we don't say.
 
-The word lay printed in large block letters for the entire classroom to see, the Archmage standing in front of her handiwork as if the meaning could not be more apparent.
+It's telling everyone we're fine after another night of tossing and turning.
 
-“Then explain yourself,” the pupil demanded, murmurs of agreement around him. “You speak as if you have just revealed the grand design of the universe but seem more prepared to teach us a childish lesson of nursery rhymes. Humility? We seek power, you of all people should know that.”
+It's in the fake smile we give our mothers because truly, we can't be the ones to break her heart.
 
-The Archmage nodded along, the small smile adorning her wrinkled face never breaking.
+It's the questionable look from a friend.
 
-“And how will you wield this power?”
+The small push from your dog against your leg, wondering why you've been so distant.
 
-The pupil stared back, brow furrowing. This was getting tiresome.
+It's in the grayish colors of my walls. The red used to burn so bright but like any other flame, they've dimmed.
 
-“That is what we are here to learn – how to draw power from ourselves.” He clenched his quill, the stem flexing. “To command the elements, to laugh in the face of psychics, to bend the wills of the universe to our desires. What all great mages seek.”
+It's in the lonely eyes of my sister. In the raging glare do my brother; because for some reason, he can't do anything but fight anymore.
 
-“And you think I am here to grant you those answers?”
+It's the lump in our chests we can't get rid of. It's sticks to us, and weighs like wet cement. With every step we feel it shift from side to side in our hearts, swinging us off balance.
 
-“Oh, enough of your questions!” The pupil’s temper flared, the atmosphere in the room thickening. “Tell us then, how does humility teach us to command power?”
+It's in the soft, broken eyes of my boyfriend. Who's smile is beginning to wear.
 
-The Archmage’s calm demeanor remained unaffected by the outburst. There was always one in each class. She took a step toward the pupil, who shrunk back into their chair.
+Depression is in the world around me. It's in the endless fighting, the killing, the shooting, the looting, the burning.
 
-“There are laws of the universe. You yourself have stated as such.” She began. “Laws that have helped life form, helped societies rise and fall. Call them the laws of physics, thermodynamics, whatever you may. Tell me, what happens to a structure, construct or living, if gravity increases just 1 meter per second for half a second?”
+It's in every day that burns like a thousand suns. It's in the thick frosts of winter.
 
-The pupil lay silent. They were a wizard, not a mathematician.
+It's in my best friend, and the bruises her father gave to her like roses from a garden.
 
-“Total structural collapse.” The Archmage continued. “They were designed according to the laws that this world operates under. Any changes to those lead to constants being converted into variables. And from there, unpredictability.”
+It's in my Father, and the bottles that collect by his bed side. It's in every cigarette, in every dismissive shake of his head.
 
-The pupil looked back, waiting for the Archmage to continue. But she remained silent, the room still as her words sunk around here.
+It's in me. Inside my thoughts, in every crevice of my broken and shattered heart. It's in my words, tangling around my numb tongue crying to escape.
 
-“And?” the pupil asked cautiously.
+It's in my bed, chaining me to the spring-ridden mattress.
 
-The Archmage sighed.
+It's in my bathroom, in the looming reflection of my mirror.
 
-“I was hoping the rest should be obvious. When we dabble in magic, we are altering perfect rules, rules that have constructed what we know as existence. That is why humility is the true secret ever apprentice must first master - knowing how and why the rules we are breaking exist and ensuring we do not bring an end to the fabric of existence as we know it.”
+Depression is quiet, until it's not.
 
-The class stared back at the old woman. Each and everyone in the room was there to seek power. But how simple would it be for them to cast their egos aside in pursuit of this mastery?
+Depression is simple, until it's not.
 
-Could humility truly be taught, or was it something that had to be broken into a soul, like a wild beast learning how to please its master?
-
-The Archmage had been over this lesson time and time again with newer and younger cohorts, and even she was unsure of that answer.
+Depression is in anything and everything. . . Until it's not.
 """
 
+BASE_IMAGE_OUTPUT_DIR = "assets/generated_images"
 
-input_parameters = {
+parameters: Parameters = {
     "story": story,
-    "director_prompt": "Fantasy dark academia, oil painting style",  # optional parameter
-    "video_gen": False,  # optional parameter, defaults to False, if True, will generate videos, otherwise images with pans
-    "music": False,  # optional parameter, defaults to False, if True, will generate music, otherwise will use a default background track, if true need anotehr parameter  (file name of music)
-    # character design: str, optional parameter that will be inputted to high-level plan
+    "director_prompt": "Fantasy dark academia, oil painting style",
+    "character_design": None,
+    "video_gen": False,
+    "music": False,
+    "music_file": None,
+    "post_processing": [PostProcessing.PAN, PostProcessing.CAPTION],
+    "high_level_plan": None,
+    "scene_descriptions": None,
+    "image_paths": None,
 }
 
 # High-level plan
 # generates a single string describing the video
 # visual style, visual flow, character design, what will be shown in major scenes, etc.
 
-# Thing extractor
-# extract any major items the story that should have visual consistency, i.e. characters, locations, groups, etc.
-# [ { name: str, description:str }, ...]
+parameters["high_level_plan"] = generate_high_level_plan(parameters)
+print(f"High-Level Plan:\n{parameters['high_level_plan']}\n")
 
 # Scene-bot
-# generates a list of scenes (iterative multi-turn, each turn generates up to 4 new scenes)
-# [ { text: str (original text from story covered by this image), desription: str (detailed prompt for image generation)}, ...]
+# generates a list of scenes by iteratively calling the scene generation function
+# until the entire story is covered or a max iteration limit is reached.
+
+NUM_SCENES_PER_ITERATION = 3  # Define how many scenes to generate per call to the underlying iterative function
+MAX_ITERATIONS = 15  # Define a maximum number of iterations for the wrapper function
+
+if parameters["high_level_plan"] is not None:
+    print(f"Generating all scenes for the story...")
+    try:
+        all_generated_scenes = generate_all_scenes(
+            story=parameters["story"],
+            high_level_plan=parameters["high_level_plan"],
+            num_scenes_per_iteration=NUM_SCENES_PER_ITERATION,
+            max_iterations=MAX_ITERATIONS,
+        )
+        parameters["scene_descriptions"] = [
+            scene.model_dump() for scene in all_generated_scenes
+        ]  # Store as list of dicts
+
+        print("\nGenerated Scenes:")
+        if parameters["scene_descriptions"]:
+            for i, scene in enumerate(parameters["scene_descriptions"]):
+                print(f"  Scene {i+1}:")
+                print(f"    Text: {scene['text']}")
+                print(f"    Description: {scene['description']}")
+        else:
+            print("  No scenes were generated in this batch.")
+
+    except Exception as e:
+        print(f"Error during scene generation: {e}")
+else:
+    raise ValueError("High-level plan is missing.")
 
 # guardrails
 # ensures the text corresponds to the original story (gpt call, doesnt need exact match, but should be close), if fails will replace or add scenes to list
 
 # image generation
 # generate a list of images based on the text using 4o api
+if parameters["scene_descriptions"]:
+    print(
+        f"\nStarting image generation for {len(parameters['scene_descriptions'])} scenes..."
+    )
+    # Ensure the base output directory exists
+    if not os.path.exists(BASE_IMAGE_OUTPUT_DIR):
+        os.makedirs(BASE_IMAGE_OUTPUT_DIR)
+        print(f"Created image output directory: {BASE_IMAGE_OUTPUT_DIR}")
+
+    parameters["image_paths"] = generate_images_for_scenes(
+        scene_descriptions=parameters["scene_descriptions"],
+        base_output_dir=BASE_IMAGE_OUTPUT_DIR,
+    )
+    if parameters["image_paths"]:
+        print(f"\nSuccessfully generated {len(parameters['image_paths'])} images:")
+        for path in parameters["image_paths"]:
+            print(f"  - {path}")
+    else:
+        print("\nNo images were generated.")
+else:
+    print("\nSkipping image generation as no scene descriptions are available.")
 
 # audio generation
 # generate a list of audio clips based on the text
