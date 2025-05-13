@@ -60,6 +60,17 @@ BASE_IMAGE_OUTPUT_DIR = "assets/generated_images"
 BASE_AUDIO_OUTPUT_DIR = "assets/generated_audio"
 VIDEO_OUTPUT_PATH = "assets/output/final_story_video.mp4"
 
+# alloy // deeper, serios female/high pitched male
+# ash // deep male voice
+# ballad // britsh male voice
+# coral // female voice
+# echo // standard male voice
+# fable // calm male voice
+# nova // standard female voice, medium high pitched
+# onyx // deep, male voice, gravelly
+# sage // airy female voice
+# shimmer // female voice, hearty
+
 parameters: Parameters = {
     "story": story,
     "director_prompt": "Fantasy dark academia, oil painting style",
@@ -72,6 +83,7 @@ parameters: Parameters = {
     "high_level_plan": None,
     "scene_descriptions": None,
     "image_paths": None,
+    "audio_voice": "echo",
 }
 
 
@@ -160,6 +172,7 @@ async def main():
         audio_paths_generated = generate_audio_for_scenes(
             scene_descriptions=parameters["scene_descriptions"],
             output_dir=BASE_AUDIO_OUTPUT_DIR,
+            voice=parameters.get("audio_voice"),
         )
         if audio_paths_generated:
             print(

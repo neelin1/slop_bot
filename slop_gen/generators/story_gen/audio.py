@@ -40,11 +40,13 @@ def generate_audio_for_scenes(
     scene_descriptions: List[Dict],  # Changed from lines: list[str]
     output_dir: str = "assets/generated_audio",  # Changed default dir
     model: str = "openai.tts-hd",
-    voice: str = "alloy",
+    voice: Optional[str] = None,  # Allow None, default to "echo" internally
     speed: float = 1.0,  # <1.0 = slower
 ) -> List[Optional[str]]:  # Changed to List[Optional[str]]
     os.makedirs(output_dir, exist_ok=True)
     paths: List[Optional[str]] = []  # Changed to List[Optional[str]]
+
+    actual_voice_to_use = voice if voice is not None else "echo"
 
     for idx, scene in enumerate(scene_descriptions):
         line = scene.get("text")
@@ -59,7 +61,9 @@ def generate_audio_for_scenes(
             continue
         try:
             # 1) Synthesize as MP3
-            raw_bytes = text_to_speech(text=line, model=model, voice=voice, fmt="mp3")
+            raw_bytes = text_to_speech(
+                text=line, model=model, voice=actual_voice_to_use, fmt="mp3"
+            )
             # 2) Slow it down (if speed is not 1.0)
             if speed != 1.0:
                 raw_bytes = change_speed_ffmpeg(

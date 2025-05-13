@@ -5,7 +5,7 @@ from enum import Enum
 
 class PostProcessing(Enum):
     PAN = 1
-    # CAPTION = 2
+    CAPTION = 2
     # GLITCH = 3
     # PIXELATE = 4
 
@@ -23,6 +23,7 @@ class Parameters(TypedDict):
         music_file: Optional path to a music file.
         post_processing: List of post-processing effects to apply to the video.
         music_volume: Optional parameter for music volume, 1.0 is default
+        audio_voice: Optional parameter for TTS voice
     """
 
     # Input Parameters
@@ -36,6 +37,7 @@ class Parameters(TypedDict):
     music_file: str | None
     post_processing: list[PostProcessing]
     music_volume: float | None  # Optional parameter for music volume, 1.0 is default
+    audio_voice: str | None  # Optional parameter for TTS voice
 
     # Output Parameters
     high_level_plan: str | None

@@ -164,7 +164,12 @@ def text_to_speech(
 
 
 def openai_chat_api_structured(
-    messages, *, model="gpt-4.1", temperature=0, seed=42, response_format=None
+    messages,
+    *,
+    model="openai.gpt-4.1-mini",
+    temperature=0,
+    seed=42,
+    response_format=None,
 ):
     """
     Similar to openai_chat_api, but enforces a structured output
