@@ -61,7 +61,7 @@ def zoom_in_effect(
         clip_y = frame_H / 2 - s * (img_H / 2 + offset_y)
         return (clip_x, clip_y)
 
-    return clip.resize(scale_func).set_position(pos_func)
+    return clip.resize(scale_func).set_position(pos_func)  # type: ignore
 
 
 def zoom_out_effect(
@@ -83,7 +83,7 @@ def zoom_out_effect(
         clip_y = frame_H / 2 - s * (img_H / 2 + offset_y)
         return (clip_x, clip_y)
 
-    return clip.resize(scale_func).set_position(pos_func)
+    return clip.resize(scale_func).set_position(pos_func)  # type: ignore
 
 
 def zoom_in_top_right_effect(
@@ -107,7 +107,7 @@ def zoom_in_top_right_effect(
         clip_y = 0 - s * (0 + offset_y)  # offset_y is from top-left of image
         return (clip_x, clip_y)
 
-    return clip.resize(scale_func).set_position(pos_func)
+    return clip.resize(scale_func).set_position(pos_func)  # type: ignore
 
 
 def zoom_out_top_right_effect(
@@ -129,7 +129,7 @@ def zoom_out_top_right_effect(
         clip_y = 0 - s * (0 + offset_y)
         return (clip_x, clip_y)
 
-    return clip.resize(scale_func).set_position(pos_func)
+    return clip.resize(scale_func).set_position(pos_func)  # type: ignore
 
 
 # Pan effects would also need to accept img_W, img_H, offset_x, offset_y and be adjusted
@@ -216,13 +216,28 @@ def create_video_from_assets(
     fps: int = 24,
     height: int = 1080,  # Defaulted to a common portrait height for social media
     music_path: Optional[str] = None,
-    music_volume: float = 0.3,
+    music_volume_param: Optional[float] = None,
     wrap_width: int = 30,  # Adjusted for portrait, might need tuning
     zoom_effect: bool = True,  # Added to control the zoom
     default_segment_duration: float = 3.0,  # Duration for segments with no audio
 ) -> None:
     clips = []
     total_segments = len(image_paths)
+
+    # Determine actual music volume to use
+    actual_music_volume = 0.3  # Default if not overridden
+    if music_volume_param is not None:
+        try:
+            # The user wants 1.0 to be the current setting, which is 0.3
+            # So, we scale the input relative to this baseline.
+            # If user provides 1.0, actual_music_volume remains 0.3.
+            # If user provides 0.5, actual_music_volume becomes 0.3 * 0.5 = 0.15
+            # If user provides 2.0, actual_music_volume becomes 0.3 * 2.0 = 0.6
+            actual_music_volume = 0.3 * float(music_volume_param)
+        except ValueError:
+            print(
+                f"Warning: Invalid music_volume_param '{music_volume_param}'. Using default volume {actual_music_volume}."
+            )
 
     # Calculate target 9:16 frame dimensions
     target_frame_H = height
@@ -494,7 +509,7 @@ def create_video_from_assets(
             if final_video_clip.duration > full_music_clip.duration:
                 bg_music_clip = full_music_clip.loop(  # type: ignore
                     duration=final_video_clip.duration
-                ).volumex(music_volume)
+                ).volumex(actual_music_volume)
             else:
                 # Try to pick a somewhat random segment if music is longer
                 max_start_time = max(
@@ -503,7 +518,7 @@ def create_video_from_assets(
                 start_time = random.uniform(0, max_start_time)
                 bg_music_clip = full_music_clip.subclip(
                     start_time, start_time + final_video_clip.duration
-                ).volumex(music_volume)
+                ).volumex(actual_music_volume)
 
             # If the final_video_clip already has audio (from segments), composite it
             if final_video_clip.audio:
