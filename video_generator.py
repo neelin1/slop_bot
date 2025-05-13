@@ -14,11 +14,12 @@ from slop_gen.generators.story_gen.video import create_video_from_assets
 from slop_gen.generators.story_gen.sample_stories import (
     conan_story,
     depression_story,
+    short_horror_story,
 )
 import os
 from typing import List, Optional
 
-story: str = conan_story
+story: str = short_horror_story
 
 BASE_IMAGE_OUTPUT_DIR = "assets/generated_images"
 BASE_AUDIO_OUTPUT_DIR = "assets/generated_audio"

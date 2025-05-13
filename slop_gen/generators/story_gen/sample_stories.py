@@ -93,3 +93,7 @@ By sunset, Conan departed the gnome village with a mended side, a full belly, an
 
 As he walked the forest path, Conan reflected that the world held wonders as dangerous as its terrors, and sometimes, the smallest allies proved the most valuable. Gnomebringer gleamed at his side as the first stars appeared above, and the Cimmerian smiled—a rare expression on that hard face—as he continued his journey through the gathering night.
 """
+
+
+short_horror_story: str = """
+The whispers began three nights after moving into the old Victorian, always at precisely 3:17 AM—soft at first, like someone standing just behind me, muttering words I couldn't quite make out. Each night they grew clearer, until I could finally understand the voice was reciting names, dates, and methods of death—seventeen in total. I dismissed it as the settling of an ancient house or my imagination working overtime, until I discovered the hidden basement room with its collection of antique surgical tools and the crumbling journal detailing each "procedure." Last night, the whispers changed; now they speak only one name—mine—and tonight, as I lie awake watching the bedside clock tick toward 3:17, I notice for the first time that the whispers aren't coming from behind me at all, but seem to be emerging from my own throat."""

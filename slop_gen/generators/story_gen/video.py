@@ -89,7 +89,7 @@ def zoom_out_effect(
     return clip.resize(scale_func).set_position(pos_func)  # type: ignore
 
 
-def zoom_in_top_right_effect(
+def zoom_in_top_center_effect(
     clip: ImageClip,
     duration: float,
     frame_W: int,
@@ -99,21 +99,27 @@ def zoom_in_top_right_effect(
     offset_x: float,
     offset_y: float,
 ) -> ImageClip:
-    """Zooms in, keeping an initially offset top-right point of the content fixed to frame's top-right."""
+    """Zooms in, keeping a point near the top-center of the content (horizontally offset by offset_x) fixed to frame's top-center."""
     scale_func = lambda t: S_BASE + S_DELTA * (t / duration)
 
     def pos_func(t):
         s = scale_func(t)
-        # Target content point (img_W + offset_x, 0 + offset_y) relative to image TL
-        # should be at frame's top-right (frame_W, 0)
-        clip_x = frame_W - s * (img_W + offset_x)
-        clip_y = 0 - s * (0 + offset_y)  # offset_y is from top-left of image
+        # Anchor point on image: (img_W / 2 + offset_x, 0)
+        # This image anchor point is mapped to frame's top-center: (frame_W / 2, 0)
+        img_content_anchor_x = img_W / 2 + offset_x
+        img_content_anchor_y = 0.0  # Anchored at the very top edge of the image content
+
+        target_frame_anchor_x = frame_W / 2
+        target_frame_anchor_y = 0.0
+
+        clip_x = target_frame_anchor_x - s * img_content_anchor_x
+        clip_y = target_frame_anchor_y - s * img_content_anchor_y  # This will be 0.0
         return (clip_x, clip_y)
 
     return clip.resize(scale_func).set_position(pos_func)  # type: ignore
 
 
-def zoom_out_top_right_effect(
+def zoom_out_top_center_effect(
     clip: ImageClip,
     duration: float,
     frame_W: int,
@@ -123,13 +129,21 @@ def zoom_out_top_right_effect(
     offset_x: float,
     offset_y: float,
 ) -> ImageClip:
-    """Zooms out, keeping an initially offset top-right point of the content fixed to frame's top-right."""
+    """Zooms out, keeping a point near the top-center of the content (horizontally offset by offset_x) fixed to frame's top-center."""
     scale_func = lambda t: (S_BASE + S_DELTA) - S_DELTA * (t / duration)
 
     def pos_func(t):
         s = scale_func(t)
-        clip_x = frame_W - s * (img_W + offset_x)
-        clip_y = 0 - s * (0 + offset_y)
+        # Anchor point on image: (img_W / 2 + offset_x, 0)
+        # This image anchor point is mapped to frame's top-center: (frame_W / 2, 0)
+        img_content_anchor_x = img_W / 2 + offset_x
+        img_content_anchor_y = 0.0  # Anchored at the very top edge of the image content
+
+        target_frame_anchor_x = frame_W / 2
+        target_frame_anchor_y = 0.0
+
+        clip_x = target_frame_anchor_x - s * img_content_anchor_x
+        clip_y = target_frame_anchor_y - s * img_content_anchor_y  # This will be 0.0
         return (clip_x, clip_y)
 
     return clip.resize(scale_func).set_position(pos_func)  # type: ignore
@@ -188,6 +202,118 @@ def pan_right_to_left_effect(
     return clip.set_position(pos_func)
 
 
+# --- Diagonal Pan Effects ---
+# These effects scale the base clip up (by 4/3) and pan diagonally.
+
+
+def pan_diag_br_tl_effect(  # Bottom-Right content to Top-Left content
+    clip_base: ImageClip,
+    duration: float,
+    frame_W_target: int,
+    frame_H_target: int,
+    img_W_of_base: int,
+    img_H_of_base: int,
+    offset_x_ignored: float,
+    offset_y_ignored: float,
+) -> ImageClip:
+    s_diag_pan = 4 / 3
+    scaled_clip_W = img_W_of_base * s_diag_pan
+    scaled_clip_H = img_H_of_base * s_diag_pan
+
+    x_start = frame_W_target - scaled_clip_W  # Start showing bottom-right
+    y_start = frame_H_target - scaled_clip_H
+    x_end = 0.0  # End showing top-left
+    y_end = 0.0
+
+    def pos_func(t):
+        current_x = x_start + (x_end - x_start) * (t / duration)
+        current_y = y_start + (y_end - y_start) * (t / duration)
+        return (current_x, current_y)
+
+    return clip_base.resize(s_diag_pan).set_position(pos_func)  # type: ignore
+
+
+def pan_diag_tl_br_effect(  # Top-Left content to Bottom-Right content
+    clip_base: ImageClip,
+    duration: float,
+    frame_W_target: int,
+    frame_H_target: int,
+    img_W_of_base: int,
+    img_H_of_base: int,
+    offset_x_ignored: float,
+    offset_y_ignored: float,
+) -> ImageClip:
+    s_diag_pan = 4 / 3
+    scaled_clip_W = img_W_of_base * s_diag_pan
+    scaled_clip_H = img_H_of_base * s_diag_pan
+
+    x_start = 0.0  # Start showing top-left
+    y_start = 0.0
+    x_end = frame_W_target - scaled_clip_W  # End showing bottom-right
+    y_end = frame_H_target - scaled_clip_H
+
+    def pos_func(t):
+        current_x = x_start + (x_end - x_start) * (t / duration)
+        current_y = y_start + (y_end - y_start) * (t / duration)
+        return (current_x, current_y)
+
+    return clip_base.resize(s_diag_pan).set_position(pos_func)  # type: ignore
+
+
+def pan_diag_tr_bl_effect(  # Top-Right content to Bottom-Left content
+    clip_base: ImageClip,
+    duration: float,
+    frame_W_target: int,
+    frame_H_target: int,
+    img_W_of_base: int,
+    img_H_of_base: int,
+    offset_x_ignored: float,
+    offset_y_ignored: float,
+) -> ImageClip:
+    s_diag_pan = 4 / 3
+    scaled_clip_W = img_W_of_base * s_diag_pan
+    scaled_clip_H = img_H_of_base * s_diag_pan
+
+    x_start = frame_W_target - scaled_clip_W  # Start showing top-right
+    y_start = 0.0
+    x_end = 0.0  # End showing bottom-left
+    y_end = frame_H_target - scaled_clip_H
+
+    def pos_func(t):
+        current_x = x_start + (x_end - x_start) * (t / duration)
+        current_y = y_start + (y_end - y_start) * (t / duration)
+        return (current_x, current_y)
+
+    return clip_base.resize(s_diag_pan).set_position(pos_func)  # type: ignore
+
+
+def pan_diag_bl_tr_effect(  # Bottom-Left content to Top-Right content
+    clip_base: ImageClip,
+    duration: float,
+    frame_W_target: int,
+    frame_H_target: int,
+    img_W_of_base: int,
+    img_H_of_base: int,
+    offset_x_ignored: float,
+    offset_y_ignored: float,
+) -> ImageClip:
+    s_diag_pan = 4 / 3
+    scaled_clip_W = img_W_of_base * s_diag_pan
+    scaled_clip_H = img_H_of_base * s_diag_pan
+
+    x_start = 0.0  # Start showing bottom-left
+    y_start = frame_H_target - scaled_clip_H
+    x_end = frame_W_target - scaled_clip_W  # End showing top-right
+    y_end = 0.0
+
+    def pos_func(t):
+        current_x = x_start + (x_end - x_start) * (t / duration)
+        current_y = y_start + (y_end - y_start) * (t / duration)
+        return (current_x, current_y)
+
+    return clip_base.resize(s_diag_pan).set_position(pos_func)  # type: ignore
+
+
 # List of available effects
 # For now, let's stick to zoom effects as panning needs more careful implementation
 # with respect to image and frame sizes.
@@ -204,10 +330,14 @@ available_effects: List[
 ] = [
     zoom_in_effect,
     zoom_out_effect,
-    zoom_in_top_right_effect,
-    zoom_out_top_right_effect,
+    zoom_in_top_center_effect,
+    zoom_out_top_center_effect,
     pan_left_to_right_effect,
     pan_right_to_left_effect,
+    pan_diag_br_tl_effect,
+    pan_diag_tl_br_effect,
+    pan_diag_tr_bl_effect,
+    pan_diag_bl_tr_effect,
 ]
 
 
@@ -516,7 +646,7 @@ def create_video_from_assets(
             full_music_clip = AudioFileClip(music_path)
             # If final video is longer than music, loop music, otherwise take a slice
             if final_video_clip.duration > full_music_clip.duration:
-                bg_music_clip = afx.loop(  # type: ignore
+                bg_music_clip = afx.audio_loop(  # type: ignore
                     full_music_clip, duration=final_video_clip.duration
                 ).volumex(actual_music_volume)
             else:
