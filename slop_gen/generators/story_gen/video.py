@@ -12,6 +12,9 @@ from moviepy.editor import (
     CompositeAudioClip,
 )
 from moviepy.config import change_settings
+import moviepy.audio.fx.all as afx
+
+from slop_gen.generators.story_gen.planning import PostProcessing
 
 # It's good practice to call this once, e.g., in your main script or an init file if used across modules.
 # However, having it here ensures it's set if this module is used somewhat independently.
@@ -220,6 +223,9 @@ def create_video_from_assets(
     wrap_width: int = 30,  # Adjusted for portrait, might need tuning
     zoom_effect: bool = True,  # Added to control the zoom
     default_segment_duration: float = 3.0,  # Duration for segments with no audio
+    post_processing_effects: Optional[
+        List[PostProcessing]
+    ] = None,  # Added for captions control
 ) -> None:
     clips = []
     total_segments = len(image_paths)
@@ -452,8 +458,11 @@ def create_video_from_assets(
             # Text Clip
             text_segments = []
             if (
-                raw_text and raw_text != "@@@"
-            ):  # Don't add text for silent scenes or if text is empty
+                raw_text
+                and raw_text != "@@@"
+                and post_processing_effects
+                and PostProcessing.CAPTION in post_processing_effects
+            ):  # Don't add text for silent scenes or if text is empty, and check for CAPTION post-processing
                 wrapped_text = textwrap.fill(raw_text, width=wrap_width)
                 # Potentially make font, size, color, etc., parameters
                 txt_clip = (
@@ -507,8 +516,8 @@ def create_video_from_assets(
             full_music_clip = AudioFileClip(music_path)
             # If final video is longer than music, loop music, otherwise take a slice
             if final_video_clip.duration > full_music_clip.duration:
-                bg_music_clip = full_music_clip.loop(  # type: ignore
-                    duration=final_video_clip.duration
+                bg_music_clip = afx.loop(  # type: ignore
+                    full_music_clip, duration=final_video_clip.duration
                 ).volumex(actual_music_volume)
             else:
                 # Try to pick a somewhat random segment if music is longer

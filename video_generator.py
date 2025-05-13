@@ -73,7 +73,7 @@ VIDEO_OUTPUT_PATH = "assets/output/final_story_video.mp4"
 
 parameters: Parameters = {
     "story": story,
-    "director_prompt": "Fantasy dark academia, oil painting style",
+    "director_prompt": "Fantasy oil painting style",
     "character_design": None,
     "video_gen": False,
     "music": True,
@@ -240,6 +240,7 @@ async def main():
             output_path=VIDEO_OUTPUT_PATH,
             music_path=music_to_use,
             music_volume_param=parameters.get("music_volume"),
+            post_processing_effects=parameters.get("post_processing"),
         )
     else:
         print(
