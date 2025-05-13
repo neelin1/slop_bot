@@ -1,0 +1,15 @@
+setup.py
+funny_gen/__init__.py
+funny_gen/audio.py
+funny_gen/images.py
+funny_gen/story.py
+info_videos/__init__.py
+info_videos/audio_generator.py
+info_videos/content_generator.py
+info_videos/image_generator.py
+info_videos/main.py
+info_videos/video_generator.py
+slop_bot.egg-info/PKG-INFO
+slop_bot.egg-info/SOURCES.txt
+slop_bot.egg-info/dependency_links.txt
+slop_bot.egg-info/top_level.txt
