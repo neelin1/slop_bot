@@ -41,7 +41,7 @@ openai==1.78.0
 packaging==25.0
 parso==0.8.4
 pexpect==4.9.0
-Pillow==9.5.0
+Pillow==10.2.0
 platformdirs==4.3.8
 proglog==0.1.12
 prompt_toolkit==3.0.51
