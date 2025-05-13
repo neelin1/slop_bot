@@ -11,50 +11,14 @@ from slop_gen.generators.story_gen.scene_gen import (
 from slop_gen.generators.story_gen.images import generate_images_for_scenes
 from slop_gen.generators.story_gen.audio import generate_audio_for_scenes
 from slop_gen.generators.story_gen.video import create_video_from_assets
+from slop_gen.generators.story_gen.sample_stories import (
+    conan_story,
+    depression_story,
+)
 import os
 from typing import List, Optional
 
-story: str = """
-Depression is quiet.
-
-Depression isn't words, it's the words we don't say.
-
-It's telling everyone we're fine after another night of tossing and turning.
-
-It's in the fake smile we give our mothers because truly, we can't be the ones to break her heart.
-
-It's the questionable look from a friend.
-
-The small push from your dog against your leg, wondering why you've been so distant.
-
-It's in the grayish colors of my walls. The red used to burn so bright but like any other flame, they've dimmed.
-
-It's in the lonely eyes of my sister. In the raging glare do my brother; because for some reason, he can't do anything but fight anymore.
-
-It's the lump in our chests we can't get rid of. It's sticks to us, and weighs like wet cement. With every step we feel it shift from side to side in our hearts, swinging us off balance.
-
-It's in the soft, broken eyes of my boyfriend. Who's smile is beginning to wear.
-
-Depression is in the world around me. It's in the endless fighting, the killing, the shooting, the looting, the burning.
-
-It's in every day that burns like a thousand suns. It's in the thick frosts of winter.
-
-It's in my best friend, and the bruises her father gave to her like roses from a garden.
-
-It's in my Father, and the bottles that collect by his bed side. It's in every cigarette, in every dismissive shake of his head.
-
-It's in me. Inside my thoughts, in every crevice of my broken and shattered heart. It's in my words, tangling around my numb tongue crying to escape.
-
-It's in my bed, chaining me to the spring-ridden mattress.
-
-It's in my bathroom, in the looming reflection of my mirror.
-
-Depression is quiet, until it's not.
-
-Depression is simple, until it's not.
-
-Depression is in anything and everything. . . Until it's not.
-"""
+story: str = conan_story
 
 BASE_IMAGE_OUTPUT_DIR = "assets/generated_images"
 BASE_AUDIO_OUTPUT_DIR = "assets/generated_audio"
