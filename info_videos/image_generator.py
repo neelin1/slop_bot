@@ -25,7 +25,8 @@ def is_fictional_character(name):
         "cercei lannister": "character from Game of Thrones with blonde hair",
         "john pork": "cartoon pig character with a fedora hat",
         "ronald mcdonald": "McDonald's mascot clown with red and yellow outfit",
-        "wendy": "Wendy's fast food mascot with red hair in pigtails"
+        "wendy": "Wendy's fast food mascot with red hair in pigtails",
+        "eric cartman": "South Park cartoon character, 8-year-old boy with chubby face, brown hair, overweight body, wearing red coat, blue mittens, yellow-trimmed cyan hat with yellow pom-pom on top, brown pants, angry or smug expression, simplistic 2D flat cartoon style exactly like in South Park TV show"
     }
     
     for key in fictional_characters.keys():
@@ -54,7 +55,8 @@ def get_character_description(name):
         "cercei lannister": "character from Game of Thrones with long blonde hair, regal appearance, green eyes, elegant red and gold clothing, serious expression",
         "john pork": "friendly cartoon pig with a brown fedora hat, bow tie, cheerful expression, anthropomorphic pig character, clean cartoon style",
         "ronald mcdonald": "McDonald's mascot clown with bright red hair, yellow jumpsuit with red and white striped sleeves, red and white face paint, big red shoes, friendly and cheerful expression",
-        "wendy": "Wendy's restaurant mascot with bright red hair in pigtails tied with blue ribbons, freckles, blue and white striped dress, friendly smile, cartoon style"
+        "wendy": "Wendy's restaurant mascot with bright red hair in pigtails tied with blue ribbons, freckles, blue and white striped dress, friendly smile, cartoon style",
+        "eric cartman": "South Park cartoon character, 8-year-old boy with chubby face, brown hair, overweight body, wearing red coat, blue mittens, yellow-trimmed cyan hat with yellow pom-pom on top, brown pants, angry or smug expression, simplistic 2D flat cartoon style exactly like in South Park TV show"
     }
     
     for key, description in fictional_characters.items():

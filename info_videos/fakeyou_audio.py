@@ -6,7 +6,9 @@ import os
 # Dictionary mapping character names to FakeYou voice tokens
 CHARACTER_VOICES = {
     "Peter Griffin": "weight_883h5cw4q48cpsmjvjypxs0dc",  # Peter Griffin
-    "Homer Simpson": "weight_xcgb5zyhewq39gkgq7qcjpw8v"   # Homer Simpson
+    "Homer Simpson": "weight_xcgb5zyhewq39gkgq7qcjpw8v",   # Homer Simpson
+    "Eric Cartman": "weight_h8ebh6fyjyrr1vsjregw6yz8y"   # Eric Cartman
+
 }
 
 # Using the same credentials as in fakeyou.py

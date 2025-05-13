@@ -30,12 +30,17 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
         f"4. Each speaker should talk roughly the same amount (equal word count)\n"
         f"5. Speakers should address each other by name occasionally\n"
         f"6. Format as a clean script with each line starting with speaker's name followed by colon\n"
-        f"7. Content should be detailed and substantive\n\n"
+        f"7. Content should be detailed and substantive\n"
+        f"8. DO NOT include any stage directions, actions, or emotional cues in parentheses or brackets\n"
+        f"9. Do not use '(laughs)', '(nods)', '(smiling)', or any other action descriptions\n"
+        f"10. Include ONLY the spoken dialogue with no descriptions of actions or emotions\n"
+        f"11. Have the characters dive into technical details and scientific concepts when possible\n"
+        f"12. Make sure they discuss technical aspects of the topic with surprising expertise, even if it seems out of character\n\n"
         f"Content: {input_text}"
     )
 
     messages = [
-        {"role": "system", "content": "You are an expert scriptwriter who creates precisely timed educational dialogue. You excel at creating exactly the right amount of content for specified durations."},
+        {"role": "system", "content": "You are an expert scriptwriter who creates precisely timed educational dialogue. You excel at creating exactly the right amount of content for specified durations. Create highly technical, detailed conversations even when the characters wouldn't normally be expected to have such knowledge. Never include stage directions, actions, or emotional cues in parentheses or brackets - only pure dialogue."},
         {"role": "user", "content": prompt},
     ]
 
@@ -63,6 +68,11 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
                 elif speaker_name.lower() in [teacher2_name.lower(), teacher2_name.split()[0].lower()]:
                     speaker_name = teacher2_name
                 
+                # Remove any stage directions that might have been included despite instructions
+                text = re.sub(r'\([^)]*\)', '', text)  # Remove text in parentheses
+                text = re.sub(r'\[[^\]]*\]', '', text)  # Remove text in brackets
+                text = text.strip()
+                
                 conversation.append({
                     "speaker": speaker_name,
                     "text": text
@@ -84,7 +94,11 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
                 f"5. They MUST address each other by name occasionally\n"
                 f"6. Format each line as: [Name]: [Text]\n"
                 f"7. Make content VERY detailed and comprehensive\n"
-                f"8. Do NOT include any meta instructions or notes in the output"
+                f"8. Do NOT include any meta instructions or notes in the output\n"
+                f"9. NEVER include stage directions, actions, or emotions in parentheses or brackets\n"
+                f"10. ONLY include dialogue with no descriptions of actions, gestures, or emotions\n"
+                f"11. Characters MUST dive deeply into technical details, terminology, and scientific concepts\n"
+                f"12. Characters should speak with technical expertise, even if that seems unusual for them\n"
             )
             
             # Try again with the more forceful prompt
@@ -108,6 +122,11 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
                         speaker_name = teacher1_name
                     elif speaker_name.lower() in [teacher2_name.lower(), teacher2_name.split()[0].lower()]:
                         speaker_name = teacher2_name
+                    
+                    # Remove any stage directions that might have been included despite instructions
+                    text = re.sub(r'\([^)]*\)', '', text)  # Remove text in parentheses
+                    text = re.sub(r'\[[^\]]*\]', '', text)  # Remove text in brackets
+                    text = text.strip()
                     
                     conversation.append({
                         "speaker": speaker_name,

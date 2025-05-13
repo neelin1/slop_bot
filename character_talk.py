@@ -63,7 +63,7 @@ def generate_character_conversation():
         known_characters = [
             "peter griffin", "quagmire", "homer simpson", "bart simpson", 
             "stewie griffin", "wendy", "ronald mcdonald", "mickey mouse", 
-            "donald duck", "cercei lannister", "john pork"
+            "donald duck", "cercei lannister", "john pork", "eric cartman"
         ]
         
         # Look for character patterns like "X talking to Y about Z"
@@ -96,11 +96,19 @@ def generate_character_conversation():
             versus_pattern = re.compile(r'(.*?)\s+(?:vs|versus|against|opposing)\s+(.*?)\s+(?:on|about|regarding|concerning|discussing)\s+(.*)', re.IGNORECASE)
             match = versus_pattern.match(prompt)
         
+        # Pattern 4: "X talking to Y" (without a specific topic)
+        if not match:
+            simple_pattern = re.compile(f'(.*?)\\s+{conversation_keywords}\\s+{relation_words}\\s+(.*)', re.IGNORECASE)
+            match = simple_pattern.match(prompt)
+        
         if match:
             # Extract characters and topic directly from the user's prompt
             character1 = match.group(1).strip()
             character2 = match.group(2).strip()
-            topic = match.group(3).strip()
+            
+            # Extract topic if there is one (pattern 4 doesn't have a topic group)
+            if len(match.groups()) > 2:
+                topic = match.group(3).strip()
             
             # Capitalize character names for better display
             character1 = character1.title()
@@ -117,6 +125,44 @@ def generate_character_conversation():
         print(f"Using default characters: '{character1}' and '{character2}'")
         print(f"Using topic from PDF filename: '{topic}'")
     
+    # If using a PDF, but also provided a prompt, check if we can extract characters from the prompt
+    if args.pdf and args.prompt:
+        prompt = args.prompt.lower()
+        
+        # Define patterns just for character extraction without requiring topic
+        simple_relation = f'(.*?)\\s+(?:{conversation_keywords}|and)\\s+{relation_words}\\s+(.*)'
+        simple_pattern = re.compile(simple_relation, re.IGNORECASE)
+        match = simple_pattern.match(prompt)
+        
+        if match:
+            # Override the default characters with ones from the prompt
+            character1 = match.group(1).strip().title()
+            character2 = match.group(2).strip().title()
+            print(f"Using characters from prompt: '{character1}' and '{character2}'")
+            # Keep the topic from PDF filename
+        else:
+            # Check if prompt just lists two characters
+            parts = prompt.split()
+            if len(parts) >= 2:
+                possible_characters = []
+                
+                # Look for character names in CHARACTER_VOICES
+                from info_videos.fakeyou_audio import CHARACTER_VOICES
+                
+                for name in CHARACTER_VOICES.keys():
+                    name_lower = name.lower()
+                    if name_lower in prompt.lower():
+                        possible_characters.append(name)
+                
+                # If we found characters in the prompt
+                if len(possible_characters) >= 2:
+                    character1 = possible_characters[0]
+                    character2 = possible_characters[1]
+                    print(f"Using characters from prompt: '{character1}' and '{character2}'")
+                elif len(possible_characters) == 1:
+                    character1 = possible_characters[0]
+                    print(f"Using character from prompt: '{character1}' (keeping '{character2}' as default)")
+    
     # Clean up any existing character images
     teachers_dir = "info_videos/assets/teachers"
     if os.path.exists(teachers_dir):
@@ -129,6 +175,33 @@ def generate_character_conversation():
                 file_path = os.path.join(teachers_dir, filename)
                 os.remove(file_path)
                 print(f"Removed existing file: {file_path}")
+    
+    # Either use custom images or generate image topics
+    image_topics = []
+    if custom_images:
+        print(f"Using {len(custom_images)} custom images instead of generating new ones")
+        # Skip image topic generation - we'll use custom images directly
+    elif args.pdf:
+        # When using PDF mode, try to use LLM sample images related to the topic
+        print(f"Looking for sample LLM images for {topic}")
+        sample_dir = "sample_images"
+        sample_images = []
+        
+        if os.path.exists(sample_dir):
+            # Search for related images in the sample_images directory
+            for filename in os.listdir(sample_dir):
+                file_path = os.path.join(sample_dir, filename)
+                if os.path.isfile(file_path) and any(ext in filename.lower() for ext in ['.png', '.jpg', '.jpeg', '.webp']):
+                    # Look for images with related topic in filename
+                    topic_words = topic.lower().split()
+                    # Add the file if any of the topic words are in the filename
+                    if any(word.lower() in filename.lower() for word in topic_words):
+                        sample_images.append(file_path)
+                        print(f"  Found related sample image: {filename}")
+        
+        if sample_images:
+            custom_images = sample_images
+            print(f"Using {len(custom_images)} related sample images instead of generating new ones")
     
     # Either use custom images or generate image topics
     image_topics = []
@@ -203,6 +276,10 @@ def generate_character_conversation():
         elif "stewie" in char_lower:
             voice = "fable"
             pitch = 5
+            style = "standard"
+        elif "eric cartman" in char_lower or "cartman" in char_lower:
+            voice = "fable"  # Child-like voice
+            pitch = 3        # Higher pitch for child character
             style = "standard"
         else:
             # For unknown characters, try to infer voice based on character traits

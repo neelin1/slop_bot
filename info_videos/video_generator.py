@@ -18,7 +18,7 @@ def create_conversation_video(
     content_image_paths,
     output_path="info_videos/assets/output/conversation_video.mp4",
     fps=24,
-    height=720,
+    height=1280,
     image_duration=10
 ):
     """
@@ -31,7 +31,7 @@ def create_conversation_video(
         content_image_paths (list): List of paths to content images
         output_path (str): Path to save the output video
         fps (int): Frames per second for the video
-        height (int): Height of the video in pixels
+        height (int): Height of the video in pixels (9:16 portrait aspect ratio will be used)
         image_duration (int): Duration in seconds for each content image (default: 10)
         
     Returns:
@@ -40,11 +40,11 @@ def create_conversation_video(
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
     try:
-        # Width for video (16:9 aspect ratio)
-        video_width = int(height * 16 / 9)
+        # Width for video (9:16 portrait aspect ratio)
+        video_width = int(height * 9 / 16)
         
-        # Calculate teacher image size - make teachers larger (1/2 of height instead of 1/3)
-        teacher_size = height // 2  # Teacher image will be 1/2 of the height
+        # Calculate teacher image size - make teachers smaller to fit in the portrait layout
+        teacher_size = int(video_width * 0.4)  # Teacher image will be 40% of the width
         
         # Get first speaker name for reference
         teacher1_name = audio_conversation[0]["speaker"]
@@ -89,17 +89,18 @@ def create_conversation_video(
             # Determine duration for this content image (image_duration seconds or remaining time)
             img_duration = min(float(image_duration), total_duration - current_time)
             
+            # Resize the content image to fit the top portion of the 9:16 video
+            # Leave space at the bottom for teachers and text
             content_clip = (
                 ImageClip(img_path)
                 .set_start(current_time)
                 .set_duration(img_duration)
-                .resize(height=height)
-                .set_position("center")
+                .resize(width=video_width)  # Resize to fit width
+                .set_position(("center", int(height * 0.1)))  # Position at top with slight padding
             )
             clips.append(content_clip)
             current_time += img_duration
         
-        # Create teacher clips with fade effects based on who's speaking
         # Load teacher images
         teacher1_img = ImageClip(teacher1_image_path)
         teacher2_img = ImageClip(teacher2_image_path)
@@ -109,31 +110,47 @@ def create_conversation_video(
             # Determine which teacher is speaking
             is_teacher1 = (segment["speaker"] == teacher1_name)
             
+            # Position coordinates for teachers in portrait mode
+            # Position teachers side by side in the middle section of the video
+            teacher1_pos = (int(video_width * 0.1), int(height * 0.45))  # Left side, middle section
+            teacher2_pos = (int(video_width * 0.5), int(height * 0.45))  # Right side, middle section
+            
             # Active teacher (speaking) - full opacity
             active_teacher_clip = (
                 (teacher1_img if is_teacher1 else teacher2_img)
                 .set_start(segment["start"])
                 .set_duration(segment["end"] - segment["start"])
                 .resize(height=teacher_size)
-                .set_position(("left" if is_teacher1 else "right", "bottom"))
+                .set_position(teacher1_pos if is_teacher1 else teacher2_pos)
             )
             
-            # Only add the active teacher - completely remove inactive teacher
+            # Inactive teacher - reduced opacity
+            inactive_teacher_clip = (
+                (teacher2_img if is_teacher1 else teacher1_img)
+                .set_start(segment["start"])
+                .set_duration(segment["end"] - segment["start"])
+                .resize(height=teacher_size)
+                .set_opacity(0.6)  # Reduced opacity for inactive teacher
+                .set_position(teacher2_pos if is_teacher1 else teacher1_pos)
+            )
+            
+            # Add both teachers to the clips
             clips.append(active_teacher_clip)
+            clips.append(inactive_teacher_clip)
             
-            # Add text clip for this segment
-            text_bg_height = height // 6
+            # Add text clip for this segment at the bottom of the video
+            text_bg_height = int(height * 0.2)  # 20% of height for text area
             
-            # Calculate text width to match content image area, leaving space for teachers on both sides
-            available_width = int(video_width * 0.7)  # 70% of video width
+            # Text background spanning the width of the video
+            available_width = int(video_width * 0.9)  # 90% of video width
             
             bg_clip = (
                 ColorClip(
                     size=(available_width, text_bg_height),
                     color=(0, 0, 0)
                 )
-                .set_opacity(0.6)
-                .set_position(("center", "bottom"))
+                .set_opacity(0.7)  # Slightly more opaque for better readability
+                .set_position(("center", int(height * 0.75)))  # Position in bottom portion
                 .set_start(segment["start"])
                 .set_duration(segment["end"] - segment["start"])
             )
@@ -151,7 +168,7 @@ def create_conversation_video(
                     method="caption",
                     size=(available_width - 40, None)
                 )
-                .set_position(("center", "bottom"))
+                .set_position(("center", int(height * 0.75)))  # Align with background
                 .set_start(segment["start"])
                 .set_duration(segment["end"] - segment["start"])
             )
@@ -177,7 +194,7 @@ def create_info_video(
     text_segments,
     output_path="info_videos/assets/output/info_video.mp4",
     fps=24,
-    height=720,
+    height=1280,
     segment_duration=10
 ):
     """
@@ -191,7 +208,7 @@ def create_info_video(
         text_segments (list): List of text segments corresponding to content images
         output_path (str): Path to save the output video
         fps (int): Frames per second for the video
-        height (int): Height of the video in pixels
+        height (int): Height of the video in pixels (9:16 portrait aspect ratio will be used)
         segment_duration (int): Duration of each content segment in seconds
         
     Returns:
@@ -207,11 +224,11 @@ def create_info_video(
         # Create clips for each segment
         clips = []
         
-        # Calculate teacher image size and position (larger, in corner)
-        teacher_size = height // 2  # Teacher image will be 1/2 of the height (increased from 1/3)
+        # Calculate teacher image size for portrait mode
+        teacher_size = int(height * 0.25)  # Teacher image will be 25% of the height
         
-        # Width for text background (16:9 aspect ratio)
-        video_width = int(height * 16 / 9)
+        # Width for video (9:16 portrait aspect ratio)
+        video_width = int(height * 9 / 16)
         
         # Create content segments
         start_time = 0
@@ -225,13 +242,13 @@ def create_info_video(
             if duration <= 0:
                 break
                 
-            # Create content image clip
+            # Create content image clip positioned in the top portion of the video
             content_clip = (
                 ImageClip(content_img_path)
                 .set_start(start_time)
                 .set_duration(duration)
-                .resize(height=height)
-                .set_position("center")
+                .resize(width=video_width)
+                .set_position(("center", int(height * 0.1)))  # Position at top with padding
             )
             
             # Append content clip first (lowest layer)
@@ -239,12 +256,12 @@ def create_info_video(
             
             start_time += duration
         
-        # Load teacher image as clip (middle layer)
+        # Load teacher image as clip (middle layer) at the bottom center of the video
         teacher_clip = (
             ImageClip(teacher_image_path)
             .set_duration(total_duration)
             .resize(height=teacher_size)
-            .set_position(("right", "bottom"))
+            .set_position(("center", int(height * 0.5)))  # Position in middle section
         )
         clips.append(teacher_clip)
         
@@ -262,18 +279,17 @@ def create_info_video(
                 continue
                 
             # Calculate text width to match content image area
-            # Subtract space for the teacher (about 1/3 of video width)
-            available_width = int(video_width * 0.75)
+            available_width = int(video_width * 0.9)  # 90% of video width
                 
-            # Create a semi-transparent black background for text
-            text_bg_height = height // 6  # Height of the text background
+            # Create a semi-transparent black background for text at the bottom of the video
+            text_bg_height = int(height * 0.2)  # 20% of height for text
             bg_clip = (
                 ColorClip(
                     size=(available_width, text_bg_height),
                     color=(0, 0, 0)
                 )
-                .set_opacity(0.6)  # Make it semi-transparent
-                .set_position(("center", "bottom"))
+                .set_opacity(0.7)  # Make it semi-transparent
+                .set_position(("center", int(height * 0.75)))  # Position in bottom portion
                 .set_start(start_time)
                 .set_duration(duration)
             )
@@ -291,7 +307,7 @@ def create_info_video(
                     method="caption",
                     size=(available_width - 40, None)
                 )
-                .set_position(("center", "bottom"))
+                .set_position(("center", int(height * 0.75)))  # Align with background
                 .set_start(start_time)
                 .set_duration(duration)
             )
