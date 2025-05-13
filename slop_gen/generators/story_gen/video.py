@@ -29,6 +29,16 @@ except Exception as e:
 S_BASE = 1.2
 # Delta scale factor - how much the zoom changes during the effect.
 S_DELTA = 0.1
+# Max vertical offset fraction to ensure content covers frame during zoom (with S_BASE minimum zoom)
+# This is used to calculate content_offset_y. An image of height H, scaled by S_BASE,
+# will have scaled height S_BASE*H. The frame height is H (or rather, img_H is target_frame_H).
+# The visible portion of the scaled image is H. Extra scaled image part is (S_BASE*H - H).
+# This extra part is distributed above and below, so (S_BASE*H - H)/2 is max shift from center.
+# offset_y is in original image coords of the base clip (which is HxH). Scaled offset is S_BASE*offset_y.
+# So, S_BASE*offset_y <= (S_BASE*H - H)/2.
+# This means offset_y <= H * (S_BASE - 1) / (2 * S_BASE).
+# The fraction of H is (S_BASE - 1) / (2 * S_BASE).
+MAX_VERTICAL_OFFSET_FRACTION_FOR_ZOOM = (S_BASE - 1) / (2 * S_BASE)  # Approx 0.0833
 
 
 def zoom_in_effect(
@@ -137,7 +147,9 @@ def pan_left_to_right_effect(
     # clip is img_movie_clip_base, so img_W_clip == img_H_clip == frame_H in current setup
     # Vertical position based on offset_y (content point img_H_clip/2 + offset_y should be at frame_H/2)
     # Since img_H_clip == frame_H, y_pos_for_clip = -offset_y
-    y_pos = -offset_y
+    y_pos = (
+        0.0  # NEW: Ensure the HxH clip is vertically centered in the H-height frame.
+    )
 
     def pos_func(t):
         # Horizontal pan: clip's left edge moves from 0 to (frame_W - img_W_clip)
@@ -161,7 +173,7 @@ def pan_right_to_left_effect(
     offset_y: float,
 ) -> ImageClip:
     """Pans content from right to left, with no zoom. Uses base clip scaled to frame height."""
-    y_pos = -offset_y
+    y_pos = 0.0  # NEW: Ensure the HxH clip is vertically centered.
 
     def pos_func(t):
         # Horizontal pan: clip's left edge moves from (frame_W - img_W_clip) to 0
@@ -224,7 +236,7 @@ def create_video_from_assets(
     RANDOM_HORIZONTAL_OFFSET_FACTOR = (
         0.4  # For zoom effects, fraction of pannable width
     )
-    RANDOM_VERTICAL_OFFSET_FRACTION = 0.1  # For all effects, fraction of image height
+    # RANDOM_VERTICAL_OFFSET_FRACTION = 0.1  # For all effects, fraction of image height # REMOVED - Using new global constant
 
     if len(image_paths) != len(audio_paths) or len(image_paths) != len(scene_texts):
         print(
@@ -295,7 +307,10 @@ def create_video_from_assets(
             )
 
             # Vertical offset based on a fraction of image height (for all effects)
-            max_abs_vertical_offset = img_H * RANDOM_VERTICAL_OFFSET_FRACTION
+            # img_H here is the height of img_movie_clip_base (which is target_frame_H)
+            max_abs_vertical_offset = (
+                img_H * MAX_VERTICAL_OFFSET_FRACTION_FOR_ZOOM
+            )  # Use the new constant
             content_offset_y = random.uniform(
                 -max_abs_vertical_offset, max_abs_vertical_offset
             )
