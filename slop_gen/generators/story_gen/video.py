@@ -240,6 +240,12 @@ def create_video_from_assets(
             print("Error: No media to process after length check.")
             return
 
+    last_applied_effect_name: Optional[str] = None  # Track the last applied effect
+    pan_effect_names = {
+        "pan_left_to_right_effect",
+        "pan_right_to_left_effect",
+    }  # Define pan effect names
+
     for i in range(len(image_paths)):
         img_path = image_paths[i]
         audio_path = audio_paths[i]
@@ -294,28 +300,75 @@ def create_video_from_assets(
                 -max_abs_vertical_offset, max_abs_vertical_offset
             )
 
+            current_effect_name_for_update: Optional[str] = (
+                None  # Stores name of effect applied in this iteration
+            )
+
             if zoom_effect:
                 if available_effects:
-                    effect_func = random.choice(available_effects)
-                    print(
-                        f"Applying effect: {effect_func.__name__} to segment {i+1} with offset ({content_offset_x:.2f}, {content_offset_y:.2f})"
-                    )
-                    try:
-                        img_movie_clip_affected = effect_func(
-                            img_movie_clip_base,
-                            duration,
-                            target_frame_W,
-                            target_frame_H,
-                            img_W,
-                            img_H,
-                            content_offset_x,
-                            content_offset_y,
-                        )
-                    except Exception as e_effect:
+                    effect_func_to_apply: Optional[Callable[..., ImageClip]] = None
+
+                    eligible_choices = list(available_effects)  # Start with all effects
+
+                    if (
+                        last_applied_effect_name
+                        and last_applied_effect_name in pan_effect_names
+                    ):
+                        # If last effect was a pan, try to pick a different one
+                        filtered_choices = [
+                            eff
+                            for eff in eligible_choices
+                            if eff.__name__ != last_applied_effect_name
+                        ]
+                        if filtered_choices:
+                            effect_func_to_apply = random.choice(filtered_choices)
+                        else:
+                            # Fallback: if filtering left no choices (e.g., only one effect type, and it was the last pan)
+                            effect_func_to_apply = random.choice(
+                                eligible_choices
+                            )  # Pick from original list
+                    else:
+                        # Last effect was not a pan, or no last effect yet, so pick any.
+                        effect_func_to_apply = random.choice(eligible_choices)
+
+                    if effect_func_to_apply:
                         print(
-                            f"Error applying effect {effect_func.__name__} to segment {i+1}: {e_effect}"
+                            f"Applying effect: {effect_func_to_apply.__name__} to segment {i+1} with offset ({content_offset_x:.2f}, {content_offset_y:.2f})"
                         )
-                        # Fallback to a default if effect fails
+                        try:
+                            img_movie_clip_affected = effect_func_to_apply(
+                                img_movie_clip_base,
+                                duration,
+                                target_frame_W,
+                                target_frame_H,
+                                img_W,
+                                img_H,
+                                content_offset_x,
+                                content_offset_y,
+                            )
+                            current_effect_name_for_update = (
+                                effect_func_to_apply.__name__
+                            )
+                        except Exception as e_effect:
+                            print(
+                                f"Error applying effect {effect_func_to_apply.__name__} to segment {i+1}: {e_effect}"
+                            )
+                            # Fallback to a default if effect fails
+                            img_movie_clip_affected = zoom_in_effect(
+                                img_movie_clip_base,
+                                duration,
+                                target_frame_W,
+                                target_frame_H,
+                                img_W,
+                                img_H,
+                                0,
+                                0,  # No offset for fallback
+                            )
+                            current_effect_name_for_update = zoom_in_effect.__name__
+                    else:  # Should not happen if available_effects is not empty
+                        print(
+                            f"Warning: No effect function was selected for segment {i+1}. Using default zoom_in_effect."
+                        )
                         img_movie_clip_affected = zoom_in_effect(
                             img_movie_clip_base,
                             duration,
@@ -324,9 +377,14 @@ def create_video_from_assets(
                             img_W,
                             img_H,
                             0,
-                            0,  # No offset for fallback
+                            0,
                         )
-                else:  # Fallback if no effects are defined
+                        current_effect_name_for_update = zoom_in_effect.__name__
+
+                else:  # Fallback if no effects are defined in available_effects list
+                    print(
+                        f"No effects in available_effects list. Using default zoom_in_effect for segment {i+1}."
+                    )
                     img_movie_clip_affected = zoom_in_effect(
                         img_movie_clip_base,
                         duration,
@@ -337,6 +395,7 @@ def create_video_from_assets(
                         0,
                         0,  # No offset for fallback
                     )
+                    current_effect_name_for_update = zoom_in_effect.__name__
             else:
                 # If no zoom effect, center the base image clip considering the random offset
                 # The base image is HxH, frame is WxH (W<H).
@@ -352,6 +411,13 @@ def create_video_from_assets(
                 img_movie_clip_affected = img_movie_clip_base.resize(
                     s_static
                 ).set_position((clip_x_static, clip_y_static))
+                current_effect_name_for_update = (
+                    None  # No specific 'effect' from the list was chosen
+                )
+
+            last_applied_effect_name = (
+                current_effect_name_for_update  # Update for the next iteration
+            )
 
             # Text Clip
             text_segments = []
