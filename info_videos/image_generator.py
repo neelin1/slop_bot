@@ -187,18 +187,38 @@ def generate_topic_images(topics, output_dir="info_videos/assets/content_images"
         
         try:
             img_streams = generate_images_with_imagen(prompt=prompt)
+            if not img_streams or len(img_streams) == 0:
+                print(f"❌ No image generated for topic '{topic}'")
+                continue
+                
             image = Image.open(img_streams[0])
             
-            # Generate a unique filename based on the topic
-            filename = "_".join(topic.split()[:5]).lower()
+            # Generate a unique filename based on the topic and index
+            # Using the index ensures we don't overwrite previous images even with similar topics
+            filename = f"topic_{i+1}_" + "_".join(topic.split()[:5]).lower()
             filename = ''.join(c if c.isalnum() or c == '_' else '_' for c in filename)
-            path = os.path.join(output_dir, f"topic_{filename[:50]}.png")
+            path = os.path.join(output_dir, f"{filename[:50]}.png")
             
+            print(f"  Saving image to: {path}")
             image.save(path)
             image_paths.append(path)
             
         except Exception as e:
             print(f"❌ Failed to generate image for topic '{topic}': {e}")
+    
+    if not image_paths:
+        print("⚠️ No images were successfully generated. Creating a default image.")
+        try:
+            # Create a default image as fallback
+            prompt = "Generic educational diagram with abstract concept visualization"
+            img_streams = generate_images_with_imagen(prompt=prompt)
+            if img_streams and len(img_streams) > 0:
+                image = Image.open(img_streams[0])
+                path = os.path.join(output_dir, "default_topic_image.png")
+                image.save(path)
+                image_paths.append(path)
+        except Exception as e:
+            print(f"❌ Failed to create even a default image: {e}")
     
     return image_paths
 

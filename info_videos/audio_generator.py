@@ -4,6 +4,7 @@ import json
 import requests
 from io import BytesIO
 from slop_gen.utils.api_utils import text_to_speech, openai_chat_api
+from info_videos.fakeyou_audio import generate_fakeyou_audio, CHARACTER_VOICES
 
 # Available OpenAI TTS voices with their characteristics
 VOICE_OPTIONS = {
@@ -106,121 +107,50 @@ def generate_audio_from_text(text, output_file, teacher_name=None, model="openai
     """
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     
-    # List of fallback voices to try if the primary voice fails
-    fallback_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
-    
-    # Make sure the requested voice is first in the list
-    if voice in fallback_voices:
-        fallback_voices.remove(voice)
-    fallback_voices.insert(0, voice)
-    
-    # Flag to track if we've disabled style
-    style_disabled = False
-    
-    # Maximum retries
-    max_retries = 3
-    
-    for retry in range(max_retries):
-        try:
-            # Build modified text with tone instructions if provided
-            modified_text = text
-            if tone_modifier:
-                # Add tone instructions that the TTS model might pick up on
-                modified_text = f"[{tone_modifier}] {text}"
-            
-            # Generate audio using text-to-speech API
-            if voice_style and voice_style != "default" and not style_disabled:
-                # Custom implementation to add voice style since our wrapper doesn't support it directly
-                try:
-                    audio_bytes = custom_tts_with_style(modified_text, model, voice, voice_style)
-                except Exception as style_error:
-                    print(f"  Style application error: {style_error}")
-                    print(f"  Falling back to standard TTS without style")
-                    style_disabled = True
-                    audio_bytes = text_to_speech(text=modified_text, model=model, voice=voice, fmt="mp3")
-            else:
-                audio_bytes = text_to_speech(text=modified_text, model=model, voice=voice, fmt="mp3")
-            
-            # Apply speed and pitch adjustments if needed
-            if speed != 1.0 or pitch != 0:
-                adjustment_desc = []
-                if speed != 1.0:
-                    adjustment_desc.append(f"speed {speed}x")
-                if pitch != 0:
-                    adjustment_desc.append(f"pitch {pitch:+d} semitones")
-                
-                print(f"  Adjusting audio: {', '.join(adjustment_desc)}...")
-                audio_bytes = change_speed_ffmpeg(audio_bytes, speed=speed, pitch=pitch, in_fmt="mp3", out_fmt="mp3")
-            
-            # Save the audio file
-            with open(output_file, "wb") as f:
-                f.write(audio_bytes)
-            
-            return output_file
-            
-        except Exception as e:
-            print(f"  Attempt {retry+1}/{max_retries} failed: {e}")
-            
-            # Try different strategies based on the error
-            if "500" in str(e) or "Server Error" in str(e):
-                # Server error, let's try different approaches
-                if retry < 1:
-                    # First retry: Disable style and try again with same voice
-                    print(f"  Server error detected. Retrying without voice style...")
-                    style_disabled = True
-                else:
-                    # Second retry: Try a different voice
-                    current_voice_index = min(retry, len(fallback_voices)-1)
-                    voice = fallback_voices[current_voice_index]
-                    print(f"  Server error persists. Trying with voice: {voice}")
-            
-            # If this was the last retry, we need to create a dummy audio file
-            if retry == max_retries - 1:
-                print(f"  All attempts failed. Creating silent audio as fallback.")
-                create_silent_audio(output_file, duration=5)  # 5 seconds of silence
-                return output_file
-    
-    return None
-
-def create_silent_audio(output_file, duration=5):
-    """
-    Creates a silent audio file as a fallback when TTS fails.
-    
-    Args:
-        output_file (str): Path to save the audio file
-        duration (int): Duration of silence in seconds
-        
-    Returns:
-        str: Path to the generated audio file
-    """
     try:
-        cmd = [
-            "ffmpeg",
-            "-hide_banner",
-            "-loglevel", "error",
-            "-f", "lavfi",
-            "-i", f"anullsrc=r=44100:cl=stereo",
-            "-t", str(duration),
-            "-c:a", "libmp3lame",
-            "-b:a", "128k",
-            output_file
-        ]
+        # Check if the character is available in FakeYou
+        if teacher_name in CHARACTER_VOICES:
+            print(f"  Using FakeYou for {teacher_name} voice...")
+            return generate_fakeyou_audio(text, output_file, teacher_name)
+            
+        # Build modified text with tone instructions if provided
+        modified_text = text
+        if tone_modifier:
+            # Add tone instructions that the TTS model might pick up on
+            modified_text = f"[{tone_modifier}] {text}"
         
-        subprocess.run(cmd, check=True)
-        print(f"  Created silent audio file: {output_file}")
-        return output_file
-    except Exception as e:
-        print(f"  Failed to create silent audio: {e}")
-        # Last resort - create an empty file
+        # Generate audio using text-to-speech API
+        if voice_style and voice_style != "default":
+            # Custom implementation to add voice style since our wrapper doesn't support it directly
+            audio_bytes = custom_tts_with_style(modified_text, model, voice, voice_style)
+        else:
+            audio_bytes = text_to_speech(text=modified_text, model=model, voice=voice, fmt="mp3")
+        
+        # Apply speed and pitch adjustments if needed
+        if speed != 1.0 or pitch != 0:
+            adjustment_desc = []
+            if speed != 1.0:
+                adjustment_desc.append(f"speed {speed}x")
+            if pitch != 0:
+                adjustment_desc.append(f"pitch {pitch:+d} semitones")
+            
+            print(f"  Adjusting audio: {', '.join(adjustment_desc)}...")
+            audio_bytes = change_speed_ffmpeg(audio_bytes, speed=speed, pitch=pitch, in_fmt="mp3", out_fmt="mp3")
+        
+        # Save the audio file
         with open(output_file, "wb") as f:
-            pass
+            f.write(audio_bytes)
+        
         return output_file
+    
+    except Exception as e:
+        print(f"❌ Failed to generate audio: {e}")
+        return None
 
 def custom_tts_with_style(text, model, voice, voice_style):
     """
     Custom implementation of text-to-speech with voice style support.
-    Uses text modification techniques since direct style API may not be supported.
-    Uses a simplified approach to avoid server errors.
+    Uses direct API call since the wrapper doesn't support the voice_style parameter.
     
     Args:
         text (str): Text to convert to speech
@@ -231,41 +161,52 @@ def custom_tts_with_style(text, model, voice, voice_style):
     Returns:
         bytes: Raw audio data
     """
-    # Map style to simple text prefixes
-    style_prefixes = {
-        "excited": "Speaking with enthusiasm and excitement: ",
-        "friendly": "Speaking in a warm and friendly tone: ",
-        "serious": "Speaking in a serious, professional tone: ",
-        "sad": "Speaking in a sad, somber tone: ",
-        "authoritative": "Speaking with authority and command: ",
-        "whispered": "Speaking in a hushed, quiet tone: "
+    from slop_gen.utils.api_utils import OPENAI_API_KEY, OPENAI_BASE_URL
+    
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY not set")
+
+    url = f"{OPENAI_BASE_URL}/audio/speech"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
     }
     
-    # If style not defined, use default
-    if voice_style not in style_prefixes:
-        return text_to_speech(text=text, model=model, voice=voice, fmt="mp3")
+    # Add a SSML markup for style if supported
+    modified_text = f"<speak><prosody rate='medium'><amazon:{voice_style}>{text}</amazon:{voice_style}></prosody></speak>"
     
-    # Get prefix for the requested style
-    prefix = style_prefixes.get(voice_style, "")
+    # For OpenAI compatibility (alternative approach)
+    if "openai" in model.lower():
+        # Try a simpler approach with brackets for OpenAI's model
+        modified_text = f"[{voice_style}] {text}"
     
-    # Build a modified text with just a simple prefix
-    modified_text = f"{prefix}{text}"
-    
-    print(f"  Applying voice style: {voice_style}")
-    
+    payload = {
+        "model": model,
+        "input": modified_text,
+        "voice": voice,
+        "format": "mp3",
+        "response_format": {
+            "type": "audio",
+            "voice_style": voice_style
+        }
+    }
+
     try:
-        # Generate audio with the modified text
-        return text_to_speech(text=modified_text, model=model, voice=voice, fmt="mp3")
+        resp = requests.post(url, headers=headers, json=payload)
+        resp.raise_for_status()
+        print(f"  Applied voice style: {voice_style}")
+        return resp.content
     except Exception as e:
-        print(f"  Error applying style through text modification: {e}")
-        print(f"  Falling back to standard TTS")
+        print(f"  Warning: Voice style '{voice_style}' might not be supported. Falling back to default.")
+        # Fall back to regular TTS without style
         return text_to_speech(text=text, model=model, voice=voice, fmt="mp3")
 
 def generate_conversation_audio(conversation, output_dir, teacher1_voice="alloy", teacher2_voice="echo", 
                               speed=1.3, teacher1_pitch=0, teacher2_pitch=0, 
                               teacher1_tone=None, teacher2_tone=None,
                               teacher1_style=None, teacher2_style=None,
-                              teacher1_speed=None, teacher2_speed=None):
+                              teacher1_speed=None, teacher2_speed=None,
+                              teacher1_name=None, teacher2_name=None):
     """
     Generates audio files for a conversation between two teachers with enhanced voice control.
     
@@ -283,6 +224,8 @@ def generate_conversation_audio(conversation, output_dir, teacher1_voice="alloy"
         teacher2_style (str, optional): Voice style/vibe for second teacher
         teacher1_speed (float, optional): Specific speech speed for teacher 1
         teacher2_speed (float, optional): Specific speech speed for teacher 2
+        teacher1_name (str, optional): Name of the first teacher for FakeYou compatibility
+        teacher2_name (str, optional): Name of the second teacher for FakeYou compatibility
         
     Returns:
         list: List of dictionaries with 'speaker', 'text', and 'audio_path' keys
@@ -318,12 +261,14 @@ def generate_conversation_audio(conversation, output_dir, teacher1_voice="alloy"
             tone = teacher1_tone
             style = teacher1_style
             speaker_speed = teacher1_speed if teacher1_speed is not None else speed
+            speaker_name = teacher1_name  # Pass the character name for FakeYou
         else:  # Teacher 2
             voice = teacher2_voice
             pitch = teacher2_pitch
             tone = teacher2_tone
             style = teacher2_style
             speaker_speed = teacher2_speed if teacher2_speed is not None else speed
+            speaker_name = teacher2_name  # Pass the character name for FakeYou
             
         # Generate audio file name
         audio_path = os.path.join(output_dir, f"segment_{i+1}_{speaker.replace(' ', '_')}.mp3")
@@ -337,7 +282,8 @@ def generate_conversation_audio(conversation, output_dir, teacher1_voice="alloy"
             speed=speaker_speed,
             pitch=pitch,
             tone_modifier=tone,
-            voice_style=style
+            voice_style=style,
+            teacher_name=speaker_name  # Pass the character name for FakeYou
         )
         
         if audio_file:

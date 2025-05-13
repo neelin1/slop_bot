@@ -10,7 +10,7 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
                                teacher1_pitch=0, teacher2_pitch=0,
                                teacher1_style=None, teacher2_style=None,
                                teacher1_speed=None, teacher2_speed=None,
-                               topic_images=None, image_topics=None, image_duration=10):
+                               topic_images=None, image_topics=None, image_duration=10, duration_seconds=25):
     """
     Generate a conversation video with two teachers discussing a topic.
     
@@ -31,11 +31,24 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
         topic_images (list, optional): List of pre-defined image paths to use
         image_topics (list, optional): List of topics to generate images for (instead of using script segments)
         image_duration (int, optional): Duration in seconds for each content image (default: 10)
+        duration_seconds (int, optional): Target duration for the conversation (default: 25)
         
     Returns:
         str: Path to the generated video
     """
+    # Import here to avoid circular imports
+    from info_videos.fakeyou_audio import CHARACTER_VOICES
+    
     print(f"Generating conversation video with teachers: {teacher1_name} and {teacher2_name}")
+    
+    # Check if the characters can use FakeYou
+    teacher1_fakeyou = teacher1_name in CHARACTER_VOICES
+    teacher2_fakeyou = teacher2_name in CHARACTER_VOICES
+    
+    if teacher1_fakeyou:
+        print(f"✅ Will use FakeYou for {teacher1_name}")
+    if teacher2_fakeyou:
+        print(f"✅ Will use FakeYou for {teacher2_name}")
     
     # Create necessary directories
     assets_dir = "info_videos/assets"
@@ -51,7 +64,7 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
     
     # 2. Generate conversation script
     print("Generating conversation script...")
-    conversation = generate_conversation_script(input_text, teacher1_name, teacher2_name)
+    conversation = generate_conversation_script(input_text, teacher1_name, teacher2_name, duration_seconds=duration_seconds)
     if not conversation:
         print("❌ Failed to generate conversation script. Aborting.")
         return None
@@ -78,7 +91,9 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
         teacher1_style=teacher1_style,
         teacher2_style=teacher2_style,
         teacher1_speed=t1_speed,
-        teacher2_speed=t2_speed
+        teacher2_speed=t2_speed,
+        teacher1_name=teacher1_name,  # Pass the character name for FakeYou
+        teacher2_name=teacher2_name   # Pass the character name for FakeYou
     )
     
     if not audio_conversation:

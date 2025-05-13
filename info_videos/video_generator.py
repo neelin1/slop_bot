@@ -43,8 +43,8 @@ def create_conversation_video(
         # Width for video (16:9 aspect ratio)
         video_width = int(height * 16 / 9)
         
-        # Calculate teacher image size 
-        teacher_size = height // 3  # Teacher image will be 1/3 of the height
+        # Calculate teacher image size - make teachers larger (1/2 of height instead of 1/3)
+        teacher_size = height // 2  # Teacher image will be 1/2 of the height
         
         # Get first speaker name for reference
         teacher1_name = audio_conversation[0]["speaker"]
@@ -208,7 +208,7 @@ def create_info_video(
         clips = []
         
         # Calculate teacher image size and position (larger, in corner)
-        teacher_size = height // 3  # Teacher image will be 1/3 of the height
+        teacher_size = height // 2  # Teacher image will be 1/2 of the height (increased from 1/3)
         
         # Width for text background (16:9 aspect ratio)
         video_width = int(height * 16 / 9)
