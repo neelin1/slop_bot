@@ -16,7 +16,9 @@ logging.basicConfig(level=logging.INFO)
 
 
 MODEL = (
-    "google.imagen-3.0-generate"  # google.imagen-3.0-fast-generate, gpt-image-1, dall-e
+    "google.imagen-3.0-fast-generate"
+    # "google.imagen-3.0-generate"
+    # "gpt-image-1"
 )
 
 
