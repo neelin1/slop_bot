@@ -29,6 +29,16 @@ except Exception as e:
 S_BASE = 1.2
 # Delta scale factor - how much the zoom changes during the effect.
 S_DELTA = 0.1
+# Max vertical offset fraction to ensure content covers frame during zoom (with S_BASE minimum zoom)
+# This is used to calculate content_offset_y. An image of height H, scaled by S_BASE,
+# will have scaled height S_BASE*H. The frame height is H (or rather, img_H is target_frame_H).
+# The visible portion of the scaled image is H. Extra scaled image part is (S_BASE*H - H).
+# This extra part is distributed above and below, so (S_BASE*H - H)/2 is max shift from center.
+# offset_y is in original image coords of the base clip (which is HxH). Scaled offset is S_BASE*offset_y.
+# So, S_BASE*offset_y <= (S_BASE*H - H)/2.
+# This means offset_y <= H * (S_BASE - 1) / (2 * S_BASE).
+# The fraction of H is (S_BASE - 1) / (2 * S_BASE).
+MAX_VERTICAL_OFFSET_FRACTION_FOR_ZOOM = (S_BASE - 1) / (2 * S_BASE)  # Approx 0.0833
 
 
 def zoom_in_effect(
@@ -51,7 +61,7 @@ def zoom_in_effect(
         clip_y = frame_H / 2 - s * (img_H / 2 + offset_y)
         return (clip_x, clip_y)
 
-    return clip.resize(scale_func).set_position(pos_func)
+    return clip.resize(scale_func).set_position(pos_func)  # type: ignore
 
 
 def zoom_out_effect(
@@ -73,7 +83,7 @@ def zoom_out_effect(
         clip_y = frame_H / 2 - s * (img_H / 2 + offset_y)
         return (clip_x, clip_y)
 
-    return clip.resize(scale_func).set_position(pos_func)
+    return clip.resize(scale_func).set_position(pos_func)  # type: ignore
 
 
 def zoom_in_top_right_effect(
@@ -97,7 +107,7 @@ def zoom_in_top_right_effect(
         clip_y = 0 - s * (0 + offset_y)  # offset_y is from top-left of image
         return (clip_x, clip_y)
 
-    return clip.resize(scale_func).set_position(pos_func)
+    return clip.resize(scale_func).set_position(pos_func)  # type: ignore
 
 
 def zoom_out_top_right_effect(
@@ -119,7 +129,7 @@ def zoom_out_top_right_effect(
         clip_y = 0 - s * (0 + offset_y)
         return (clip_x, clip_y)
 
-    return clip.resize(scale_func).set_position(pos_func)
+    return clip.resize(scale_func).set_position(pos_func)  # type: ignore
 
 
 # Pan effects would also need to accept img_W, img_H, offset_x, offset_y and be adjusted
@@ -137,7 +147,9 @@ def pan_left_to_right_effect(
     # clip is img_movie_clip_base, so img_W_clip == img_H_clip == frame_H in current setup
     # Vertical position based on offset_y (content point img_H_clip/2 + offset_y should be at frame_H/2)
     # Since img_H_clip == frame_H, y_pos_for_clip = -offset_y
-    y_pos = -offset_y
+    y_pos = (
+        0.0  # NEW: Ensure the HxH clip is vertically centered in the H-height frame.
+    )
 
     def pos_func(t):
         # Horizontal pan: clip's left edge moves from 0 to (frame_W - img_W_clip)
@@ -161,7 +173,7 @@ def pan_right_to_left_effect(
     offset_y: float,
 ) -> ImageClip:
     """Pans content from right to left, with no zoom. Uses base clip scaled to frame height."""
-    y_pos = -offset_y
+    y_pos = 0.0  # NEW: Ensure the HxH clip is vertically centered.
 
     def pos_func(t):
         # Horizontal pan: clip's left edge moves from (frame_W - img_W_clip) to 0
@@ -204,13 +216,28 @@ def create_video_from_assets(
     fps: int = 24,
     height: int = 1080,  # Defaulted to a common portrait height for social media
     music_path: Optional[str] = None,
-    music_volume: float = 0.3,
+    music_volume_param: Optional[float] = None,
     wrap_width: int = 30,  # Adjusted for portrait, might need tuning
     zoom_effect: bool = True,  # Added to control the zoom
     default_segment_duration: float = 3.0,  # Duration for segments with no audio
 ) -> None:
     clips = []
     total_segments = len(image_paths)
+
+    # Determine actual music volume to use
+    actual_music_volume = 0.3  # Default if not overridden
+    if music_volume_param is not None:
+        try:
+            # The user wants 1.0 to be the current setting, which is 0.3
+            # So, we scale the input relative to this baseline.
+            # If user provides 1.0, actual_music_volume remains 0.3.
+            # If user provides 0.5, actual_music_volume becomes 0.3 * 0.5 = 0.15
+            # If user provides 2.0, actual_music_volume becomes 0.3 * 2.0 = 0.6
+            actual_music_volume = 0.3 * float(music_volume_param)
+        except ValueError:
+            print(
+                f"Warning: Invalid music_volume_param '{music_volume_param}'. Using default volume {actual_music_volume}."
+            )
 
     # Calculate target 9:16 frame dimensions
     target_frame_H = height
@@ -224,7 +251,7 @@ def create_video_from_assets(
     RANDOM_HORIZONTAL_OFFSET_FACTOR = (
         0.4  # For zoom effects, fraction of pannable width
     )
-    RANDOM_VERTICAL_OFFSET_FRACTION = 0.1  # For all effects, fraction of image height
+    # RANDOM_VERTICAL_OFFSET_FRACTION = 0.1  # For all effects, fraction of image height # REMOVED - Using new global constant
 
     if len(image_paths) != len(audio_paths) or len(image_paths) != len(scene_texts):
         print(
@@ -239,6 +266,12 @@ def create_video_from_assets(
         if not min_len:
             print("Error: No media to process after length check.")
             return
+
+    last_applied_effect_name: Optional[str] = None  # Track the last applied effect
+    pan_effect_names = {
+        "pan_left_to_right_effect",
+        "pan_right_to_left_effect",
+    }  # Define pan effect names
 
     for i in range(len(image_paths)):
         img_path = image_paths[i]
@@ -289,33 +322,83 @@ def create_video_from_assets(
             )
 
             # Vertical offset based on a fraction of image height (for all effects)
-            max_abs_vertical_offset = img_H * RANDOM_VERTICAL_OFFSET_FRACTION
+            # img_H here is the height of img_movie_clip_base (which is target_frame_H)
+            max_abs_vertical_offset = (
+                img_H * MAX_VERTICAL_OFFSET_FRACTION_FOR_ZOOM
+            )  # Use the new constant
             content_offset_y = random.uniform(
                 -max_abs_vertical_offset, max_abs_vertical_offset
             )
 
+            current_effect_name_for_update: Optional[str] = (
+                None  # Stores name of effect applied in this iteration
+            )
+
             if zoom_effect:
                 if available_effects:
-                    effect_func = random.choice(available_effects)
-                    print(
-                        f"Applying effect: {effect_func.__name__} to segment {i+1} with offset ({content_offset_x:.2f}, {content_offset_y:.2f})"
-                    )
-                    try:
-                        img_movie_clip_affected = effect_func(
-                            img_movie_clip_base,
-                            duration,
-                            target_frame_W,
-                            target_frame_H,
-                            img_W,
-                            img_H,
-                            content_offset_x,
-                            content_offset_y,
-                        )
-                    except Exception as e_effect:
+                    effect_func_to_apply: Optional[Callable[..., ImageClip]] = None
+
+                    eligible_choices = list(available_effects)  # Start with all effects
+
+                    if (
+                        last_applied_effect_name
+                        and last_applied_effect_name in pan_effect_names
+                    ):
+                        # If last effect was a pan, try to pick a different one
+                        filtered_choices = [
+                            eff
+                            for eff in eligible_choices
+                            if eff.__name__ != last_applied_effect_name
+                        ]
+                        if filtered_choices:
+                            effect_func_to_apply = random.choice(filtered_choices)
+                        else:
+                            # Fallback: if filtering left no choices (e.g., only one effect type, and it was the last pan)
+                            effect_func_to_apply = random.choice(
+                                eligible_choices
+                            )  # Pick from original list
+                    else:
+                        # Last effect was not a pan, or no last effect yet, so pick any.
+                        effect_func_to_apply = random.choice(eligible_choices)
+
+                    if effect_func_to_apply:
                         print(
-                            f"Error applying effect {effect_func.__name__} to segment {i+1}: {e_effect}"
+                            f"Applying effect: {effect_func_to_apply.__name__} to segment {i+1} with offset ({content_offset_x:.2f}, {content_offset_y:.2f})"
                         )
-                        # Fallback to a default if effect fails
+                        try:
+                            img_movie_clip_affected = effect_func_to_apply(
+                                img_movie_clip_base,
+                                duration,
+                                target_frame_W,
+                                target_frame_H,
+                                img_W,
+                                img_H,
+                                content_offset_x,
+                                content_offset_y,
+                            )
+                            current_effect_name_for_update = (
+                                effect_func_to_apply.__name__
+                            )
+                        except Exception as e_effect:
+                            print(
+                                f"Error applying effect {effect_func_to_apply.__name__} to segment {i+1}: {e_effect}"
+                            )
+                            # Fallback to a default if effect fails
+                            img_movie_clip_affected = zoom_in_effect(
+                                img_movie_clip_base,
+                                duration,
+                                target_frame_W,
+                                target_frame_H,
+                                img_W,
+                                img_H,
+                                0,
+                                0,  # No offset for fallback
+                            )
+                            current_effect_name_for_update = zoom_in_effect.__name__
+                    else:  # Should not happen if available_effects is not empty
+                        print(
+                            f"Warning: No effect function was selected for segment {i+1}. Using default zoom_in_effect."
+                        )
                         img_movie_clip_affected = zoom_in_effect(
                             img_movie_clip_base,
                             duration,
@@ -324,9 +407,14 @@ def create_video_from_assets(
                             img_W,
                             img_H,
                             0,
-                            0,  # No offset for fallback
+                            0,
                         )
-                else:  # Fallback if no effects are defined
+                        current_effect_name_for_update = zoom_in_effect.__name__
+
+                else:  # Fallback if no effects are defined in available_effects list
+                    print(
+                        f"No effects in available_effects list. Using default zoom_in_effect for segment {i+1}."
+                    )
                     img_movie_clip_affected = zoom_in_effect(
                         img_movie_clip_base,
                         duration,
@@ -337,6 +425,7 @@ def create_video_from_assets(
                         0,
                         0,  # No offset for fallback
                     )
+                    current_effect_name_for_update = zoom_in_effect.__name__
             else:
                 # If no zoom effect, center the base image clip considering the random offset
                 # The base image is HxH, frame is WxH (W<H).
@@ -352,6 +441,13 @@ def create_video_from_assets(
                 img_movie_clip_affected = img_movie_clip_base.resize(
                     s_static
                 ).set_position((clip_x_static, clip_y_static))
+                current_effect_name_for_update = (
+                    None  # No specific 'effect' from the list was chosen
+                )
+
+            last_applied_effect_name = (
+                current_effect_name_for_update  # Update for the next iteration
+            )
 
             # Text Clip
             text_segments = []
@@ -413,7 +509,7 @@ def create_video_from_assets(
             if final_video_clip.duration > full_music_clip.duration:
                 bg_music_clip = full_music_clip.loop(  # type: ignore
                     duration=final_video_clip.duration
-                ).volumex(music_volume)
+                ).volumex(actual_music_volume)
             else:
                 # Try to pick a somewhat random segment if music is longer
                 max_start_time = max(
@@ -422,7 +518,7 @@ def create_video_from_assets(
                 start_time = random.uniform(0, max_start_time)
                 bg_music_clip = full_music_clip.subclip(
                     start_time, start_time + final_video_clip.duration
-                ).volumex(music_volume)
+                ).volumex(actual_music_volume)
 
             # If the final_video_clip already has audio (from segments), composite it
             if final_video_clip.audio:
