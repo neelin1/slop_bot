@@ -1,3 +1,4 @@
+import asyncio
 from slop_gen.generators.story_gen.planning import (
     Parameters,
     PostProcessing,
@@ -67,83 +68,91 @@ parameters: Parameters = {
     "image_paths": None,
 }
 
-# High-level plan
-# generates a single string describing the video
-# visual style, visual flow, character design, what will be shown in major scenes, etc.
 
-parameters["high_level_plan"] = generate_high_level_plan(parameters)
-print(f"High-Level Plan:\n{parameters['high_level_plan']}\n")
+async def main():
+    # High-level plan
+    # generates a single string describing the video
+    # visual style, visual flow, character design, what will be shown in major scenes, etc.
 
-# Scene-bot
-# generates a list of scenes by iteratively calling the scene generation function
-# until the entire story is covered or a max iteration limit is reached.
+    parameters["high_level_plan"] = generate_high_level_plan(parameters)
+    print(f"High-Level Plan:\n{parameters['high_level_plan']}\n")
 
-NUM_SCENES_PER_ITERATION = 3  # Define how many scenes to generate per call to the underlying iterative function
-MAX_ITERATIONS = 15  # Define a maximum number of iterations for the wrapper function
+    # Scene-bot
+    # generates a list of scenes by iteratively calling the scene generation function
+    # until the entire story is covered or a max iteration limit is reached.
 
-if parameters["high_level_plan"] is not None:
-    print(f"Generating all scenes for the story...")
-    try:
-        all_generated_scenes = generate_all_scenes(
-            story=parameters["story"],
-            high_level_plan=parameters["high_level_plan"],
-            num_scenes_per_iteration=NUM_SCENES_PER_ITERATION,
-            max_iterations=MAX_ITERATIONS,
-        )
-        parameters["scene_descriptions"] = [
-            scene.model_dump() for scene in all_generated_scenes
-        ]  # Store as list of dicts
-
-        print("\nGenerated Scenes:")
-        if parameters["scene_descriptions"]:
-            for i, scene in enumerate(parameters["scene_descriptions"]):
-                print(f"  Scene {i+1}:")
-                print(f"    Text: {scene['text']}")
-                print(f"    Description: {scene['description']}")
-        else:
-            print("  No scenes were generated in this batch.")
-
-    except Exception as e:
-        print(f"Error during scene generation: {e}")
-else:
-    raise ValueError("High-level plan is missing.")
-
-# guardrails
-# ensures the text corresponds to the original story (gpt call, doesnt need exact match, but should be close), if fails will replace or add scenes to list
-
-# image generation
-# generate a list of images based on the text using 4o api
-if parameters["scene_descriptions"]:
-    print(
-        f"\nStarting image generation for {len(parameters['scene_descriptions'])} scenes..."
+    NUM_SCENES_PER_ITERATION = 3  # Define how many scenes to generate per call to the underlying iterative function
+    MAX_ITERATIONS = (
+        15  # Define a maximum number of iterations for the wrapper function
     )
-    # Ensure the base output directory exists
-    if not os.path.exists(BASE_IMAGE_OUTPUT_DIR):
-        os.makedirs(BASE_IMAGE_OUTPUT_DIR)
-        print(f"Created image output directory: {BASE_IMAGE_OUTPUT_DIR}")
 
-    parameters["image_paths"] = generate_images_for_scenes(
-        scene_descriptions=parameters["scene_descriptions"],
-        base_output_dir=BASE_IMAGE_OUTPUT_DIR,
-    )
-    if parameters["image_paths"]:
-        print(f"\nSuccessfully generated {len(parameters['image_paths'])} images:")
-        for path in parameters["image_paths"]:
-            print(f"  - {path}")
+    if parameters["high_level_plan"] is not None:
+        print(f"Generating all scenes for the story...")
+        try:
+            all_generated_scenes = generate_all_scenes(
+                story=parameters["story"],
+                high_level_plan=parameters["high_level_plan"],
+                num_scenes_per_iteration=NUM_SCENES_PER_ITERATION,
+                max_iterations=MAX_ITERATIONS,
+            )
+            parameters["scene_descriptions"] = [
+                scene.model_dump() for scene in all_generated_scenes
+            ]  # Store as list of dicts
+
+            print("\nGenerated Scenes:")
+            if parameters["scene_descriptions"]:
+                for i, scene in enumerate(parameters["scene_descriptions"]):
+                    print(f"  Scene {i+1}:")
+                    print(f"    Text: {scene['text']}")
+                    print(f"    Description: {scene['description']}")
+            else:
+                print("  No scenes were generated in this batch.")
+
+        except Exception as e:
+            print(f"Error during scene generation: {e}")
     else:
-        print("\nNo images were generated.")
-else:
-    print("\nSkipping image generation as no scene descriptions are available.")
+        raise ValueError("High-level plan is missing.")
 
-# audio generation
-# generate a list of audio clips based on the text
+    # guardrails
+    # ensures the text corresponds to the original story (gpt call, doesnt need exact match, but should be close), if fails will replace or add scenes to list
 
-# video generation
-# 2 options:
-# generate videos using sora
-# generate videos using pans
-# post-processing to add test
+    # image generation
+    # generate a list of images based on the text using 4o api
+    if parameters["scene_descriptions"]:
+        print(
+            f"\nStarting image generation for {len(parameters['scene_descriptions'])} scenes..."
+        )
+        # Ensure the base output directory exists
+        if not os.path.exists(BASE_IMAGE_OUTPUT_DIR):
+            os.makedirs(BASE_IMAGE_OUTPUT_DIR)
+            print(f"Created image output directory: {BASE_IMAGE_OUTPUT_DIR}")
 
-# post-processing
-# merge videos and audio to create final product
-# music
+        parameters["image_paths"] = await generate_images_for_scenes(
+            scene_descriptions=parameters["scene_descriptions"],
+            base_output_dir=BASE_IMAGE_OUTPUT_DIR,
+        )
+        if parameters["image_paths"]:
+            print(f"\nSuccessfully generated {len(parameters['image_paths'])} images:")
+            for path in parameters["image_paths"]:
+                print(f"  - {path}")
+        else:
+            print("\nNo images were generated.")
+    else:
+        print("\nSkipping image generation as no scene descriptions are available.")
+
+    # audio generation
+    # generate a list of audio clips based on the text
+
+    # video generation
+    # 2 options:
+    # generate videos using sora
+    # generate videos using pans
+    # post-processing to add test
+
+    # post-processing
+    # merge videos and audio to create final product
+    # music
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
