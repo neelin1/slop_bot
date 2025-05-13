@@ -1,7 +1,7 @@
 import re
 from slop_gen.utils.api_utils import openai_chat_api
 
-def generate_conversation_script(input_text, teacher1_name="Professor Sarah", teacher2_name="Professor Michael", duration_seconds=25):
+def generate_conversation_script(input_text, teacher1_name="Professor Sarah", teacher2_name="Professor Michael", duration_seconds=25, is_summary_mode=False):
     """
     Generates a conversation script between two teachers based on the input text,
     designed to take the specified number of seconds when read aloud.
@@ -11,6 +11,7 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
         teacher1_name (str): Name of the first teacher
         teacher2_name (str): Name of the second teacher
         duration_seconds (int): Target duration in seconds
+        is_summary_mode (bool): Whether to generate summarized content (True) or detailed technical content (False)
         
     Returns:
         list: List of dictionaries with 'speaker' and 'text' keys
@@ -19,6 +20,26 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
     # This is higher than the previous estimate to ensure we get enough content
     target_word_count = int(duration_seconds * 3)
     min_exchanges = max(6, duration_seconds // 10)  # At least 6 exchanges or 1 per 10 seconds
+    
+    # Define style of conversation based on mode
+    if is_summary_mode:
+        style_instructions = (
+            f"11. Characters should focus on providing a clear and concise summary of the topic\n"
+            f"12. Avoid deep technical details and complex jargon - make the content accessible\n"
+            f"13. Present key points, main ideas, and essential concepts in simple terms\n"
+            f"14. Characters should use relatable examples, analogies, and high-level explanations\n"
+            f"15. The conversation should feel like an informative summary for a general audience\n"
+        )
+        system_role = "You are an expert educator who creates engaging, accessible educational content for general audiences. You excel at summarizing complex topics into clear, concise conversations that capture key points without overwhelming technical details. Your dialogues are informative yet approachable, using plain language that maintains accuracy while being easy to understand."
+    else:
+        style_instructions = (
+            f"11. Characters MUST focus intensely on technical details and scientific concepts - they are experts on this topic\n"
+            f"12. Make the conversation technically detailed with accurate terminology, statistics and precise explanations\n"
+            f"13. Keep the characters STRICTLY ON TOPIC at all times - no tangents, jokes, or off-topic comments\n"
+            f"14. Characters must discuss the topic with rigorous technical depth even if it seems unusual for them\n"
+            f"15. The conversation should feel like an expert technical discussion with precise references to concepts from the content\n"
+        )
+        system_role = "You are an expert technical scriptwriter who creates precisely timed educational dialogue for specialists and academics. You create expert-level technical content with precise terminology, detailed explanations, and academic rigor. Your dialogues never simplify concepts and maintain extremely focused technical discussions. Never include stage directions, actions, or emotional cues - only pure technical dialogue between experts."
     
     prompt = (
         f"Convert the following content into a natural, engaging conversation "
@@ -34,13 +55,12 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
         f"8. DO NOT include any stage directions, actions, or emotional cues in parentheses or brackets\n"
         f"9. Do not use '(laughs)', '(nods)', '(smiling)', or any other action descriptions\n"
         f"10. Include ONLY the spoken dialogue with no descriptions of actions or emotions\n"
-        f"11. Have the characters dive into technical details and scientific concepts when possible\n"
-        f"12. Make sure they discuss technical aspects of the topic with surprising expertise, even if it seems out of character\n\n"
+        f"{style_instructions}\n"
         f"Content: {input_text}"
     )
 
     messages = [
-        {"role": "system", "content": "You are an expert scriptwriter who creates precisely timed educational dialogue. You excel at creating exactly the right amount of content for specified durations. Create highly technical, detailed conversations even when the characters wouldn't normally be expected to have such knowledge. Never include stage directions, actions, or emotional cues in parentheses or brackets - only pure dialogue."},
+        {"role": "system", "content": system_role},
         {"role": "user", "content": prompt},
     ]
 
@@ -83,6 +103,28 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
             print(f"⚠️ Warning: Generated only {len(conversation)} exchanges, which is less than the target {min_exchanges}.")
             print("   Attempting to generate a more detailed conversation...")
             
+            # Define retry style based on mode
+            if is_summary_mode:
+                retry_style = (
+                    f"11. Characters should present a CLEAR SUMMARY of the topic with essential points\n"
+                    f"12. Focus on ACCESSIBLE explanations that avoid unnecessary jargon\n"
+                    f"13. Make concepts EASY TO UNDERSTAND for a general audience\n"
+                    f"14. Use RELATABLE EXAMPLES and analogies to explain complex ideas\n"
+                    f"15. Balance ACCURACY with ACCESSIBILITY - be correct but not overwhelmingly technical\n"
+                    f"16. Characters should use PLAIN LANGUAGE while maintaining substantive content\n"
+                    f"17. The conversation should be INFORMATIVE yet APPROACHABLE\n"
+                )
+            else:
+                retry_style = (
+                    f"11. Characters MUST speak as technical subject matter experts with precise terminology\n"
+                    f"12. FOCUS EXCLUSIVELY on technical details, data, scientific explanations, methodologies, and deep analysis\n"
+                    f"13. Characters MUST NEVER go off topic or include tangents - maintain STRICT focus on the technical content\n"
+                    f"14. Conversation should include numerical data, technical terms, methodological details, and specific references\n"
+                    f"15. The technical detail must be accurate, precise, and extremely thorough - NO simplification allowed\n"
+                    f"16. Characters should correct each other with even more technical details when appropriate\n"
+                    f"17. Avoid all casual conversation, jokes, or simplified explanations - ONLY pure technical discussion\n"
+                )
+            
             # More forceful prompt
             messages[1]["content"] = (
                 f"Create a VERY DETAILED conversation between {teacher1_name} and {teacher2_name} about:\n\n{input_text}\n\n"
@@ -97,8 +139,7 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
                 f"8. Do NOT include any meta instructions or notes in the output\n"
                 f"9. NEVER include stage directions, actions, or emotions in parentheses or brackets\n"
                 f"10. ONLY include dialogue with no descriptions of actions, gestures, or emotions\n"
-                f"11. Characters MUST dive deeply into technical details, terminology, and scientific concepts\n"
-                f"12. Characters should speak with technical expertise, even if that seems unusual for them\n"
+                f"{retry_style}"
             )
             
             # Try again with the more forceful prompt

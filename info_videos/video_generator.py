@@ -8,7 +8,8 @@ from moviepy.editor import (
     concatenate_videoclips,
     CompositeAudioClip,
     ColorClip,
-    concatenate_audioclips
+    concatenate_audioclips,
+    AudioClip
 )
 
 def create_conversation_video(
@@ -54,18 +55,39 @@ def create_conversation_video(
         total_duration = 0
         segment_times = []  # Start and end times for each segment
         
+        # Check if any segments have missing audio
+        has_missing_audio = any(segment.get("audio_path") is None for segment in audio_conversation)
+        if has_missing_audio:
+            print("⚠️ Some audio segments are missing. Using silent audio for those parts.")
+        
         for segment in audio_conversation:
-            audio_clip = AudioFileClip(segment["audio_path"])
+            # Calculate duration for this segment
+            if segment.get("audio_path") and os.path.exists(segment["audio_path"]):
+                # Use the actual audio file
+                audio_clip = AudioFileClip(segment["audio_path"])
+                segment_duration = audio_clip.duration
+            else:
+                # Create silent audio based on text length (estimate 0.3 seconds per word)
+                word_count = len(segment["text"].split())
+                segment_duration = max(2.0, word_count * 0.3)  # At least 2 seconds
+                print(f"  Creating {segment_duration:.1f}s silent audio for '{segment['text'][:30]}...'")
+                
+                # Create silent audio clip
+                silent_audio = AudioClip(lambda t: 0, duration=segment_duration)
+                audio_clip = silent_audio
+            
             audio_clips.append(audio_clip)
             
+            # Record segment timing information
             start_time = total_duration
-            total_duration += audio_clip.duration
+            total_duration += segment_duration
             
             segment_times.append({
                 "speaker": segment["speaker"],
                 "text": segment["text"],
                 "start": start_time,
-                "end": total_duration
+                "end": total_duration,
+                "has_audio": segment.get("audio_path") is not None
             })
         
         # Combine all audio clips
@@ -156,10 +178,14 @@ def create_conversation_video(
             )
             clips.append(bg_clip)
             
-            # Text for this segment
+            # Text for this segment - add a marker if this is using silent audio
+            display_text = segment["text"]
+            if not segment.get("has_audio", True):
+                display_text = "[SILENT] " + display_text
+            
             txt_clip = (
                 TextClip(
-                    segment["text"],
+                    display_text,
                     fontsize=30,
                     font="Arial-Bold",
                     color="white",

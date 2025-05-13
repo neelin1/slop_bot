@@ -109,9 +109,11 @@ def generate_audio_from_text(text, output_file, teacher_name=None, model="openai
     
     try:
         # Check if the character is available in FakeYou
-        if teacher_name in CHARACTER_VOICES:
-            print(f"  Using FakeYou for {teacher_name} voice...")
-            return generate_fakeyou_audio(text, output_file, teacher_name)
+        # Make this case-insensitive to ensure characters like "Stewie Griffin" match
+        for character_name_key in CHARACTER_VOICES.keys():
+            if teacher_name.lower() == character_name_key.lower():
+                print(f"  Using FakeYou for {teacher_name} voice ({character_name_key})...")
+                return generate_fakeyou_audio(text, output_file, character_name_key)
             
         # Build modified text with tone instructions if provided
         modified_text = text
@@ -206,7 +208,8 @@ def generate_conversation_audio(conversation, output_dir, teacher1_voice="alloy"
                               teacher1_tone=None, teacher2_tone=None,
                               teacher1_style=None, teacher2_style=None,
                               teacher1_speed=None, teacher2_speed=None,
-                              teacher1_name=None, teacher2_name=None):
+                              teacher1_name=None, teacher2_name=None,
+                              use_fallback_for_failed=True):
     """
     Generates audio files for a conversation between two teachers with enhanced voice control.
     
@@ -226,6 +229,7 @@ def generate_conversation_audio(conversation, output_dir, teacher1_voice="alloy"
         teacher2_speed (float, optional): Specific speech speed for teacher 2
         teacher1_name (str, optional): Name of the first teacher for FakeYou compatibility
         teacher2_name (str, optional): Name of the second teacher for FakeYou compatibility
+        use_fallback_for_failed (bool): Whether to use fallback voice for failed segments
         
     Returns:
         list: List of dictionaries with 'speaker', 'text', and 'audio_path' keys
@@ -234,6 +238,7 @@ def generate_conversation_audio(conversation, output_dir, teacher1_voice="alloy"
     
     # Add audio paths to the conversation
     audio_conversation = []
+    failed_segments = []
     
     # Print voice information
     print(f"  Voice for Teacher 1: {teacher1_voice}" + 
@@ -292,7 +297,77 @@ def generate_conversation_audio(conversation, output_dir, teacher1_voice="alloy"
                 "text": text,
                 "audio_path": audio_file
             })
+        else:
+            print(f"⚠️ Failed to generate audio for segment {i+1}. Adding to failed segments list.")
+            failed_segments.append({
+                "index": i,
+                "speaker": speaker,
+                "text": text,
+                "output_path": audio_path
+            })
     
+    # Try to generate failed segments with fallback voices if enabled
+    if failed_segments and use_fallback_for_failed:
+        print(f"🔄 Attempting to regenerate {len(failed_segments)} failed segments with fallback voices...")
+        
+        for segment in failed_segments:
+            i = segment["index"]
+            speaker = segment["speaker"]
+            text = segment["text"]
+            audio_path = segment["output_path"]
+            
+            # Use OpenAI voices as fallback instead of FakeYou
+            fallback_voice = "alloy" if speaker == conversation[0]["speaker"] else "echo"
+            fallback_pitch = teacher1_pitch if speaker == conversation[0]["speaker"] else teacher2_pitch
+            fallback_speed = teacher1_speed if speaker == conversation[0]["speaker"] else teacher2_speed
+            
+            print(f"  Generating fallback audio for {speaker}, segment {i+1}/{len(conversation)}...")
+            print(f"  Using fallback voice: {fallback_voice}")
+            
+            # Add a note in the text that this is using a fallback voice
+            modified_text = f"[Using fallback voice] {text}"
+            
+            try:
+                # Generate audio directly with OpenAI TTS (bypassing FakeYou)
+                from slop_gen.utils.api_utils import text_to_speech
+                audio_bytes = text_to_speech(text=modified_text, model="openai.tts-hd", voice=fallback_voice, fmt="mp3")
+                
+                # Apply speed and pitch adjustments if needed
+                if fallback_speed != 1.0 or fallback_pitch != 0:
+                    audio_bytes = change_speed_ffmpeg(audio_bytes, speed=fallback_speed, pitch=fallback_pitch, in_fmt="mp3", out_fmt="mp3")
+                
+                # Save the audio file
+                with open(audio_path, "wb") as f:
+                    f.write(audio_bytes)
+                
+                print(f"✅ Generated fallback audio for segment {i+1}")
+                audio_conversation.append({
+                    "speaker": speaker,
+                    "text": text,
+                    "audio_path": audio_path
+                })
+            except Exception as e:
+                print(f"❌ Failed to generate fallback audio for segment {i+1}: {e}")
+                # Add the segment without audio for continuity
+                audio_conversation.append({
+                    "speaker": speaker,
+                    "text": text,
+                    "audio_path": None
+                })
+    elif failed_segments:
+        # If fallback is disabled but we have failed segments, add them to conversation without audio
+        for segment in failed_segments:
+            print(f"⚠️ Including segment {segment['index']+1} without audio for continuity")
+            audio_conversation.append({
+                "speaker": segment["speaker"],
+                "text": segment["text"],
+                "audio_path": None
+            })
+    
+    # Sort the conversation by segment index to maintain order
+    audio_conversation.sort(key=lambda x: conversation.index({"speaker": x["speaker"], "text": x["text"]}))
+    
+    print(f"✅ Generated {len(audio_conversation)} audio segments (with {len(failed_segments)} fallbacks)")
     return audio_conversation
 
 def list_available_voices():

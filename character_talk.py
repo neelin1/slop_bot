@@ -25,6 +25,10 @@ def generate_character_conversation():
                         help='Speed of speech (default: 1.0)')
     parser.add_argument('--duration', type=int, default=30,
                         help='Target duration in seconds (default: 30, max recommended: 120)')
+    parser.add_argument('--no-fallback', action='store_true',
+                        help='Disable fallback voices when FakeYou fails (will result in silent segments)')
+    parser.add_argument('--summary-mode', action='store_true',
+                        help='Generate summarized content instead of detailed technical content')
     
     args = parser.parse_args()
     
@@ -82,23 +86,23 @@ def generate_character_conversation():
             r'(?:to|with|against|alongside|beside|opposite|versus|vs|and)'
         )
         
-        # Pattern 1: "X talking to Y about Z"
-        talk_pattern = re.compile(f'(.*?)\\s+{conversation_keywords}\\s+{relation_words}\\s+(.*?)\\s+about\\s+(.*)', re.IGNORECASE)
+        # Pattern 1: "X talking to Y about Z" - improved to capture multi-word names
+        talk_pattern = re.compile(f'((?:[\\w]+\\s?)+)\\s+{conversation_keywords}\\s+{relation_words}\\s+((?:[\\w]+\\s?)+)(?:\\s+about\\s+(.*)|$)', re.IGNORECASE)
         match = talk_pattern.match(prompt)
         
-        # Pattern 2: "X and Y discussing Z"
+        # Pattern 2: "X and Y discussing Z" - improved to capture multi-word names
         if not match:
-            joint_pattern = re.compile(r'(.*?)\s+and\s+(.*?)\s+(?:discussing|talking about|debating|arguing about)\s+(.*)', re.IGNORECASE)
+            joint_pattern = re.compile(r'((?:[\w]+\s?)+)\s+and\s+((?:[\w]+\s?)+)\s+(?:discussing|talking about|debating|arguing about)\s+(.*)', re.IGNORECASE)
             match = joint_pattern.match(prompt)
             
-        # Pattern 3: "X vs Y on the topic of Z"
+        # Pattern 3: "X vs Y on the topic of Z" - improved to capture multi-word names
         if not match:
-            versus_pattern = re.compile(r'(.*?)\s+(?:vs|versus|against|opposing)\s+(.*?)\s+(?:on|about|regarding|concerning|discussing)\s+(.*)', re.IGNORECASE)
+            versus_pattern = re.compile(r'((?:[\w]+\s?)+)\s+(?:vs|versus|against|opposing)\s+((?:[\w]+\s?)+)\s+(?:on|about|regarding|concerning|discussing)\s+(.*)', re.IGNORECASE)
             match = versus_pattern.match(prompt)
         
-        # Pattern 4: "X talking to Y" (without a specific topic)
+        # Pattern 4: "X talking to Y" (without a specific topic) - improved to capture multi-word names
         if not match:
-            simple_pattern = re.compile(f'(.*?)\\s+{conversation_keywords}\\s+{relation_words}\\s+(.*)', re.IGNORECASE)
+            simple_pattern = re.compile(f'((?:[\\w]+\\s?)+)\\s+{conversation_keywords}\\s+{relation_words}\\s+((?:[\\w]+\\s?)+)(?:\\s+|$)', re.IGNORECASE)
             match = simple_pattern.match(prompt)
         
         if match:
@@ -107,8 +111,11 @@ def generate_character_conversation():
             character2 = match.group(2).strip()
             
             # Extract topic if there is one (pattern 4 doesn't have a topic group)
-            if len(match.groups()) > 2:
+            if len(match.groups()) > 2 and match.group(3):
                 topic = match.group(3).strip()
+            else:
+                # If no specific topic, use the entire prompt as the topic
+                topic = prompt
             
             # Capitalize character names for better display
             character1 = character1.title()
@@ -130,14 +137,48 @@ def generate_character_conversation():
         prompt = args.prompt.lower()
         
         # Define patterns just for character extraction without requiring topic
-        simple_relation = f'(.*?)\\s+(?:{conversation_keywords}|and)\\s+{relation_words}\\s+(.*)'
+        simple_relation = f'((?:[\\w]+\\s?)+)\\s+(?:{conversation_keywords}|and)\\s+{relation_words}\\s+((?:[\\w]+\\s?)+)(?:\\s|$)'
         simple_pattern = re.compile(simple_relation, re.IGNORECASE)
         match = simple_pattern.match(prompt)
         
         if match:
-            # Override the default characters with ones from the prompt
-            character1 = match.group(1).strip().title()
-            character2 = match.group(2).strip().title()
+            # Extract just the first one or two words for character names to avoid capturing extra text
+            char1_raw = match.group(1).strip().split()
+            char2_raw = match.group(2).strip().split()
+            
+            # For better character name extraction, favor two-word names if available
+            if len(char1_raw) >= 2:
+                character1 = f"{char1_raw[0]} {char1_raw[1]}".title()
+            else:
+                character1 = char1_raw[0].title()
+                
+            if len(char2_raw) >= 2:
+                character2 = f"{char2_raw[0]} {char2_raw[1]}".title()
+            else:
+                character2 = char2_raw[0].title()
+            
+            # Special case handling for common characters
+            if character1.lower() == "stewie":
+                character1 = "Stewie Griffin"
+            elif character2.lower() == "stewie":
+                character2 = "Stewie Griffin"
+            elif character1.lower() == "peter":
+                character1 = "Peter Griffin"
+            elif character2.lower() == "peter":
+                character2 = "Peter Griffin"
+            elif character1.lower() == "mickey":
+                character1 = "Mickey Mouse"
+            elif character2.lower() == "mickey":
+                character2 = "Mickey Mouse"
+            elif character1.lower() == "homer":
+                character1 = "Homer Simpson"
+            elif character2.lower() == "homer":
+                character2 = "Homer Simpson"
+            elif character1.lower() == "eric":
+                character1 = "Eric Cartman"
+            elif character2.lower() == "eric":
+                character2 = "Eric Cartman"
+            
             print(f"Using characters from prompt: '{character1}' and '{character2}'")
             # Keep the topic from PDF filename
         else:
@@ -345,7 +386,11 @@ def generate_character_conversation():
         print(f"  • Images: {len(custom_images)} custom images")
     else:
         print(f"  • Images: {len(image_topics)} generated topics")
-    print(f"  • Output: {output_path}\n")
+    print(f"  • Output: {output_path}")
+    if args.no_fallback:
+        print(f"  • Fallback voices: Disabled")
+    print(f"  • Mode: {'Summary' if args.summary_mode else 'Technical details'}")
+    print()
     
     # Generate a longer input text for the conversation based on the desired duration
     # Calculate word count based on desired duration - aim for more words than needed
@@ -399,7 +444,11 @@ def generate_character_conversation():
         # Set image duration based on total duration and number of images
         image_duration=max(5, min(15, args.duration // (len(custom_images) if custom_images else len(image_topics)))),
         # Pass the requested duration
-        duration_seconds=args.duration
+        duration_seconds=args.duration,
+        # Pass the no_fallback setting
+        use_fallback_for_failed=not args.no_fallback,
+        # Pass the summary mode
+        is_summary_mode=args.summary_mode
     )
     
     if video_path:

@@ -10,7 +10,8 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
                                teacher1_pitch=0, teacher2_pitch=0,
                                teacher1_style=None, teacher2_style=None,
                                teacher1_speed=None, teacher2_speed=None,
-                               topic_images=None, image_topics=None, image_duration=10, duration_seconds=25):
+                               topic_images=None, image_topics=None, image_duration=10, duration_seconds=25,
+                               use_fallback_for_failed=True, is_summary_mode=False):
     """
     Generate a conversation video with two teachers discussing a topic.
     
@@ -32,6 +33,8 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
         image_topics (list, optional): List of topics to generate images for (instead of using script segments)
         image_duration (int, optional): Duration in seconds for each content image (default: 10)
         duration_seconds (int, optional): Target duration for the conversation (default: 25)
+        use_fallback_for_failed (bool): Whether to use fallback voices for failed segments (default: True)
+        is_summary_mode (bool): Whether to generate summarized content (True) or detailed technical content (False)
         
     Returns:
         str: Path to the generated video
@@ -40,15 +43,22 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
     from info_videos.fakeyou_audio import CHARACTER_VOICES
     
     print(f"Generating conversation video with teachers: {teacher1_name} and {teacher2_name}")
+    if is_summary_mode:
+        print("Using summary mode: Characters will focus on clear, accessible explanations")
+    else:
+        print("Using technical mode: Characters will provide detailed technical explanations")
     
-    # Check if the characters can use FakeYou
-    teacher1_fakeyou = teacher1_name in CHARACTER_VOICES
-    teacher2_fakeyou = teacher2_name in CHARACTER_VOICES
+    # Check if the characters can use FakeYou (case-insensitive)
+    teacher1_fakeyou = False
+    teacher2_fakeyou = False
     
-    if teacher1_fakeyou:
-        print(f"✅ Will use FakeYou for {teacher1_name}")
-    if teacher2_fakeyou:
-        print(f"✅ Will use FakeYou for {teacher2_name}")
+    for character_name_key in CHARACTER_VOICES.keys():
+        if teacher1_name.lower() == character_name_key.lower():
+            teacher1_fakeyou = True
+            print(f"✅ Will use FakeYou for {teacher1_name} ({character_name_key})")
+        if teacher2_name.lower() == character_name_key.lower():
+            teacher2_fakeyou = True  
+            print(f"✅ Will use FakeYou for {teacher2_name} ({character_name_key})")
     
     # Create necessary directories
     assets_dir = "info_videos/assets"
@@ -64,7 +74,13 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
     
     # 2. Generate conversation script
     print("Generating conversation script...")
-    conversation = generate_conversation_script(input_text, teacher1_name, teacher2_name, duration_seconds=duration_seconds)
+    conversation = generate_conversation_script(
+        input_text, 
+        teacher1_name, 
+        teacher2_name, 
+        duration_seconds=duration_seconds,
+        is_summary_mode=is_summary_mode
+    )
     if not conversation:
         print("❌ Failed to generate conversation script. Aborting.")
         return None
@@ -93,7 +109,8 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
         teacher1_speed=t1_speed,
         teacher2_speed=t2_speed,
         teacher1_name=teacher1_name,  # Pass the character name for FakeYou
-        teacher2_name=teacher2_name   # Pass the character name for FakeYou
+        teacher2_name=teacher2_name,   # Pass the character name for FakeYou
+        use_fallback_for_failed=use_fallback_for_failed  # Pass fallback parameter
     )
     
     if not audio_conversation:
@@ -302,6 +319,10 @@ def main():
     parser.add_argument("--topic-images", nargs="+", help="List of paths to pre-defined content images")
     parser.add_argument("--image-topics", nargs="+", help="List of topics to generate images for")
     
+    # Content style options
+    parser.add_argument("--summary-mode", action="store_true", 
+                        help="Generate summarized content rather than detailed technical content")
+    
     args = parser.parse_args()
     
     # Check for helper flags first
@@ -346,7 +367,8 @@ def main():
             teacher1_speed=args.teacher1_speed if hasattr(args, 'teacher1_speed') else None,
             teacher2_speed=args.teacher2_speed if hasattr(args, 'teacher2_speed') else None,
             topic_images=args.topic_images,
-            image_topics=args.image_topics
+            image_topics=args.image_topics,
+            is_summary_mode=args.summary_mode
         )
     else:  # single mode
         if not args.teacher:

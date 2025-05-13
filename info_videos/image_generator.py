@@ -17,7 +17,8 @@ def is_fictional_character(name):
     """
     fictional_characters = {
         "peter griffin": "animated character from Family Guy, cartoon style",
-        "stewie griffin": "baby character from Family Guy with football-shaped head, cartoon style",
+        "stewie griffin": "infant character from Family Guy with football-shaped head, cartoon style",
+        "stewie": "infant character from Family Guy with football-shaped head, cartoon style",
         "homer simpson": "yellow cartoon character from The Simpsons",
         "bart simpson": "yellow cartoon character with spiky hair from The Simpsons",
         "mickey mouse": "Disney cartoon character with large round ears",
@@ -29,8 +30,9 @@ def is_fictional_character(name):
         "eric cartman": "South Park cartoon character, 8-year-old boy with chubby face, brown hair, overweight body, wearing red coat, blue mittens, yellow-trimmed cyan hat with yellow pom-pom on top, brown pants, angry or smug expression, simplistic 2D flat cartoon style exactly like in South Park TV show"
     }
     
+    name_lower = name.lower()
     for key in fictional_characters.keys():
-        if key in name.lower():
+        if key in name_lower or name_lower in key:
             return True
     
     return False
@@ -47,7 +49,8 @@ def get_character_description(name):
     """
     fictional_characters = {
         "peter griffin": "animated character from Family Guy with round face, double chin, glasses, green pants, white shirt, cartoon style",
-        "stewie griffin": "baby character from Family Guy with football-shaped head, red overalls, yellow shirt, cartoon style",
+        "stewie griffin": "infant character from Family Guy with football-shaped head, red overalls, yellow shirt, disproportionately large head, small body, evil genius expression, brandishing ray gun, Family Guy animation style",
+        "stewie": "infant character from Family Guy with football-shaped head, red overalls, yellow shirt, disproportionately large head, small body, evil genius expression, brandishing ray gun, Family Guy animation style",
         "homer simpson": "yellow cartoon character from The Simpsons with bald head, white shirt, blue pants",
         "bart simpson": "yellow cartoon character with spiky hair from The Simpsons, orange shirt, blue shorts",
         "mickey mouse": "Disney cartoon character with large round ears, red shorts with white buttons, yellow shoes",
@@ -59,8 +62,16 @@ def get_character_description(name):
         "eric cartman": "South Park cartoon character, 8-year-old boy with chubby face, brown hair, overweight body, wearing red coat, blue mittens, yellow-trimmed cyan hat with yellow pom-pom on top, brown pants, angry or smug expression, simplistic 2D flat cartoon style exactly like in South Park TV show"
     }
     
+    name_lower = name.lower()
+    
+    # Check for exact matches first
     for key, description in fictional_characters.items():
-        if key in name.lower():
+        if key == name_lower:
+            return description
+    
+    # Check for partial matches if no exact match
+    for key, description in fictional_characters.items():
+        if key in name_lower or name_lower in key:
             return description
     
     return ""
