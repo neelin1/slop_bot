@@ -12,16 +12,11 @@ cd slop_bot
 ### Step 2: Set Up Python Environment
 
 ```bash
-# Create a virtual environment
 python -m venv venv
 
-# Activate the virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
+
 source venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -72,29 +67,3 @@ Before running the tool, make sure you have:
 - `--speech-speed`: Speed of speech (default: 1.0)
 - `--no-fallback`: Disable fallback voices when FakeYou fails
 - `--summary-mode`: Generate summarized content instead of detailed technical content
-
-## Troubleshooting
-
-### API Connection Issues
-
-If the command hangs without output, check:
-
-1. Your API keys are correctly set in the `.env` file
-2. You have internet connectivity
-3. The API services are not rate-limiting your requests
-
-### Missing Audio
-
-If characters are silent in the output video:
-
-1. Try using the `--no-fallback` option to see if there are API errors
-2. Check if FakeYou service is available
-
-### Other Issues
-
-- If generating long videos, try reducing the `--duration` parameter
-- For clearer audio, adjust the `--speech-speed` parameter
-
-## Advanced Configuration
-
-For advanced users, you can modify character voice tokens in `info_videos/fakeyou_audio.py` to add support for more characters. 
