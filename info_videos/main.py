@@ -63,10 +63,10 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
     for character_name_key in CHARACTER_VOICES.keys():
         if teacher1_name.lower() == character_name_key.lower():
             teacher1_fakeyou = True
-            print(f"✅ Will use FakeYou for {teacher1_name} ({character_name_key})")
+            print(f"Will use FakeYou for {teacher1_name} ({character_name_key})")
         if teacher2_name.lower() == character_name_key.lower():
             teacher2_fakeyou = True  
-            print(f"✅ Will use FakeYou for {teacher2_name} ({character_name_key})")
+            print(f"Will use FakeYou for {teacher2_name} ({character_name_key})")
     
     # Create necessary directories
     assets_dir = "info_videos/assets"
@@ -81,9 +81,9 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
         teacher2_description=teacher2_description
     )
     if not teacher1_image_path or not teacher2_image_path:
-        print("❌ Failed to generate one or both teacher images. Aborting.")
+        print("Failed to generate one or both teacher images. Aborting.")
         return None
-    print(f"✅ Teacher images generated")
+    print(f"Teacher images generated")
     
     # 2. Generate conversation script
     print("Generating conversation script...")
@@ -97,12 +97,12 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
         teacher2_description=teacher2_description
     )
     if not conversation:
-        print("❌ Failed to generate conversation script. Aborting.")
+        print("Failed to generate conversation script. Aborting.")
         return None
     
     # Count words in the conversation
     total_words = sum(len(segment["text"].split()) for segment in conversation)
-    print(f"✅ Conversation script generated ({total_words} words, {len(conversation)} exchanges)")
+    print(f"Conversation script generated ({total_words} words, {len(conversation)} exchanges)")
     
     # Use individual speeds if provided, otherwise use default speech_speed
     t1_speed = teacher1_speed if teacher1_speed is not None else speech_speed
@@ -129,9 +129,9 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
     )
     
     if not audio_conversation:
-        print("❌ Failed to generate conversation audio. Aborting.")
+        print("Failed to generate conversation audio. Aborting.")
         return None
-    print(f"✅ Conversation audio generated ({len(audio_conversation)} segments)")
+    print(f"Conversation audio generated ({len(audio_conversation)} segments)")
     
     # 4. Content images - either use provided images, generate from topics, or from script
     print("Preparing content images...")
@@ -161,9 +161,9 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
     # Filter out None values (failed image generations)
     content_image_paths = [path for path in content_image_paths if path]
     if not content_image_paths:
-        print("❌ Failed to generate any content images. Aborting.")
+        print("Failed to generate any content images. Aborting.")
         return None
-    print(f"✅ Using {len(content_image_paths)} content images")
+    print(f"Using {len(content_image_paths)} content images")
     
     # 6. Create conversation video
     print("Creating conversation video...")
@@ -180,10 +180,10 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
     )
     
     if not video_path:
-        print("❌ Failed to create conversation video. Aborting.")
+        print("Failed to create conversation video. Aborting.")
         return None
     
-    print(f"✅ Conversation video created successfully: {video_path}")
+    print(f"Conversation video created successfully: {video_path}")
     return video_path
 
 def generate_info_video(teacher_name, input_text, output_path=None, speech_speed=1.3, 
@@ -216,17 +216,17 @@ def generate_info_video(teacher_name, input_text, output_path=None, speech_speed
     print("Generating teacher image...")
     teacher_image_path = generate_teacher_image(teacher_name)
     if not teacher_image_path:
-        print("❌ Failed to generate teacher image. Aborting.")
+        print("Failed to generate teacher image. Aborting.")
         return None
-    print(f"✅ Teacher image generated: {teacher_image_path}")
+    print(f"Teacher image generated: {teacher_image_path}")
     
     # 2. Generate podcast-style script
     print("Generating podcast script...")
     podcast_script = generate_podcast_script(input_text)
     if not podcast_script or podcast_script.startswith("Failed to generate"):
-        print("❌ Failed to generate podcast script. Aborting.")
+        print("Failed to generate podcast script. Aborting.")
         return None
-    print(f"✅ Podcast script generated ({len(podcast_script.split())} words)")
+    print(f"Podcast script generated ({len(podcast_script.split())} words)")
     
     # 3. Generate audio from script, with teacher's voice
     print("Generating audio...")
@@ -241,14 +241,14 @@ def generate_info_video(teacher_name, input_text, output_path=None, speech_speed
         voice_style=teacher_style
     )
     if not audio_path:
-        print("❌ Failed to generate audio. Aborting.")
+        print("Failed to generate audio. Aborting.")
         return None
-    print(f"✅ Audio generated: {audio_path}")
+    print(f"Audio generated: {audio_path}")
     
     # 4. Split content into segments (this is still needed for timing)
     print("Splitting content into segments...")
     text_segments = split_content_into_segments(podcast_script, segment_duration=10)
-    print(f"✅ Content split into {len(text_segments)} segments")
+    print(f"Content split into {len(text_segments)} segments")
     
     # 5. Prepare content images - either use provided images, generate from topics, or from script
     print("Preparing content images...")
@@ -275,9 +275,9 @@ def generate_info_video(teacher_name, input_text, output_path=None, speech_speed
     # Filter out None values (failed image generations)
     content_image_paths = [path for path in content_image_paths if path]
     if not content_image_paths:
-        print("❌ Failed to generate any content images. Aborting.")
+        print("Failed to generate any content images. Aborting.")
         return None
-    print(f"✅ Using {len(content_image_paths)} content images")
+    print(f"Using {len(content_image_paths)} content images")
     
     # 6. Create video
     print("Creating video...")
@@ -294,10 +294,10 @@ def generate_info_video(teacher_name, input_text, output_path=None, speech_speed
     )
     
     if not video_path:
-        print("❌ Failed to create video. Aborting.")
+        print("Failed to create video. Aborting.")
         return None
     
-    print(f"✅ Informational video created successfully: {video_path}")
+    print(f"Informational video created successfully: {video_path}")
     return video_path
 
 def main():

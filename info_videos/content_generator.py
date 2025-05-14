@@ -115,7 +115,7 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
         
         # Check if we have enough exchanges, if not, try to generate more content
         if len(conversation) < min_exchanges // 2:
-            print(f"⚠️ Warning: Generated only {len(conversation)} exchanges, which is less than the target {min_exchanges}.")
+            print(f"Warning: Generated only {len(conversation)} exchanges, which is less than the target {min_exchanges}.")
             print("   Attempting to generate a more detailed conversation...")
             
             # Define retry style based on mode
@@ -207,7 +207,7 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
         
         return conversation
     except Exception as e:
-        print(f"❌ Error generating conversation script: {e}")
+        print(f"Error generating conversation script: {e}")
         return []
 
 def generate_podcast_script(input_text, duration_seconds=25):
@@ -254,7 +254,7 @@ def generate_podcast_script(input_text, duration_seconds=25):
         
         return script
     except Exception as e:
-        print(f"❌ Error generating podcast script: {e}")
+        print(f"Error generating podcast script: {e}")
         return f"Failed to generate podcast script: {str(e)}"
 
 def split_content_into_segments(content, segment_duration=10):

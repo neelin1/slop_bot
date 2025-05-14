@@ -58,7 +58,7 @@ def create_conversation_video(
         # Check if any segments have missing audio
         has_missing_audio = any(segment.get("audio_path") is None for segment in audio_conversation)
         if has_missing_audio:
-            print("⚠️ Some audio segments are missing. Using silent audio for those parts.")
+            print("Warning: Some audio segments are missing. Using silent audio for those parts.")
         
         for segment in audio_conversation:
             # Calculate duration for this segment
@@ -210,7 +210,7 @@ def create_conversation_video(
         return output_path
     
     except Exception as e:
-        print(f"❌ Failed to create conversation video: {e}")
+        print(f"Failed to create conversation video: {e}")
         return None
 
 def create_info_video(
@@ -351,5 +351,5 @@ def create_info_video(
         return output_path
     
     except Exception as e:
-        print(f"❌ Failed to create video: {e}")
+        print(f"Failed to create video: {e}")
         return None 

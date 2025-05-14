@@ -125,7 +125,7 @@ def generate_teacher_image(teacher_name, output_dir="info_videos/assets/teachers
         return transparent_path
     
     except Exception as e:
-        print(f"❌ Failed to generate teacher image: {e}")
+        print(f"Failed to generate teacher image: {e}")
         return None
 
 def generate_teachers_images(teacher1_name, teacher2_name, output_dir="info_videos/assets/teachers", teacher1_description=None, teacher2_description=None):
@@ -180,7 +180,7 @@ def generate_content_image(text_segment, output_dir="info_videos/assets/content_
         return path
     
     except Exception as e:
-        print(f"❌ Failed to generate content image: {e}")
+        print(f"Failed to generate content image: {e}")
         return None
 
 def generate_topic_images(topics, output_dir="info_videos/assets/content_images"):
@@ -207,7 +207,7 @@ def generate_topic_images(topics, output_dir="info_videos/assets/content_images"
         try:
             img_streams = generate_images_with_imagen(prompt=prompt)
             if not img_streams or len(img_streams) == 0:
-                print(f"❌ No image generated for topic '{topic}'")
+                print(f"No image generated for topic '{topic}'")
                 continue
                 
             image = Image.open(img_streams[0])
@@ -223,10 +223,10 @@ def generate_topic_images(topics, output_dir="info_videos/assets/content_images"
             image_paths.append(path)
             
         except Exception as e:
-            print(f"❌ Failed to generate image for topic '{topic}': {e}")
+            print(f"Failed to generate image for topic '{topic}': {e}")
     
     if not image_paths:
-        print("⚠️ No images were successfully generated. Creating a default image.")
+        print("Warning: No images were successfully generated. Creating a default image.")
         try:
             # Create a default image as fallback
             prompt = "Generic educational diagram with abstract concept visualization"
@@ -237,7 +237,7 @@ def generate_topic_images(topics, output_dir="info_videos/assets/content_images"
                 image.save(path)
                 image_paths.append(path)
         except Exception as e:
-            print(f"❌ Failed to create even a default image: {e}")
+            print(f"Failed to create even a default image: {e}")
     
     return image_paths
 

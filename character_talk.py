@@ -473,7 +473,7 @@ def generate_character_conversation():
     output_path = f"info_videos/assets/output/{char1_name}_{char2_name}_{topic_short}.mp4"
     
     # Print summary of what we're generating
-    print(f"\n📽️ Generating conversation video:")
+    print(f"\nGenerating conversation video:")
     print(f"  • Character 1: {character1} (Voice: {char1_voice}, Pitch: {char1_pitch})")
     print(f"  • Character 2: {character2} (Voice: {char2_voice}, Pitch: {char2_pitch})")
     print(f"  • Topic: {topic}")
@@ -561,10 +561,10 @@ def generate_character_conversation():
     )
     
     if video_path:
-        print(f"\n✅ Success! Conversation video generated at: {video_path}")
+        print(f"\nSuccess! Conversation video generated at: {video_path}")
         print(f"Run this to play the video:\n  open {video_path}")
     else:
-        print("\n❌ Failed! Unable to generate conversation video.")
+        print("\nFailed! Unable to generate conversation video.")
 
 if __name__ == "__main__":
     generate_character_conversation() 
