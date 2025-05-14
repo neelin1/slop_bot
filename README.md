@@ -11,7 +11,7 @@ The repository is organized into different branches for separate functionalities
 
 ## Info-Videos Branch
 
-The `info-videos` branch contains instructions and tools for running information videos generation. This functionality **cannot** be merged into the main branch due to conflicting dependencies with the core platform.
+The `info-videos` branch contains instructions and tools for running information videos generation in it's respective Readme.md. This functionality **cannot** be merged into the main branch due to conflicting dependencies with the core platform.
 
 To access the information video generation tools as showin in the slideshow.
 
