@@ -1,7 +1,9 @@
 import re
 from slop_gen.utils.api_utils import openai_chat_api
 
-def generate_conversation_script(input_text, teacher1_name="Professor Sarah", teacher2_name="Professor Michael", duration_seconds=25, is_summary_mode=False):
+def generate_conversation_script(input_text, teacher1_name="Professor Sarah", teacher2_name="Professor Michael", 
+                         duration_seconds=25, is_summary_mode=False, 
+                         teacher1_description=None, teacher2_description=None):
     """
     Generates a conversation script between two teachers based on the input text,
     designed to take the specified number of seconds when read aloud.
@@ -12,6 +14,8 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
         teacher2_name (str): Name of the second teacher
         duration_seconds (int): Target duration in seconds
         is_summary_mode (bool): Whether to generate summarized content (True) or detailed technical content (False)
+        teacher1_description (str, optional): Description of the first teacher for character accuracy
+        teacher2_description (str, optional): Description of the second teacher for character accuracy
         
     Returns:
         list: List of dictionaries with 'speaker' and 'text' keys
@@ -41,9 +45,20 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
         )
         system_role = "You are an expert technical scriptwriter who creates precisely timed educational dialogue for specialists and academics. You create expert-level technical content with precise terminology, detailed explanations, and academic rigor. Your dialogues never simplify concepts and maintain extremely focused technical discussions. Never include stage directions, actions, or emotional cues - only pure technical dialogue between experts."
     
+    # Add character descriptions if provided
+    character_instructions = ""
+    if teacher1_description or teacher2_description:
+        character_instructions = "CHARACTER DETAILS:\n"
+        if teacher1_description:
+            character_instructions += f"{teacher1_name}: {teacher1_description}\n"
+        if teacher2_description:
+            character_instructions += f"{teacher2_name}: {teacher2_description}\n"
+        character_instructions += "Speakers should maintain their character traits and speak in a way that's authentic to their descriptions while still focusing on the educational content.\n\n"
+    
     prompt = (
         f"Convert the following content into a natural, engaging conversation "
         f"between {teacher1_name} and {teacher2_name}.\n\n"
+        f"{character_instructions}"
         f"IMPORTANT REQUIREMENTS:\n"
         f"1. The conversation MUST be EXACTLY {duration_seconds} seconds long when read aloud\n"
         f"2. Include approximately {target_word_count} total words (this is about 3 words per second)\n"
@@ -125,9 +140,20 @@ def generate_conversation_script(input_text, teacher1_name="Professor Sarah", te
                     f"17. Avoid all casual conversation, jokes, or simplified explanations - ONLY pure technical discussion\n"
                 )
             
+            # Add character descriptions to retry prompt if provided
+            retry_character_instructions = ""
+            if teacher1_description or teacher2_description:
+                retry_character_instructions = "CHARACTER DETAILS (MUST FOLLOW STRICTLY):\n"
+                if teacher1_description:
+                    retry_character_instructions += f"{teacher1_name}: {teacher1_description}\n"
+                if teacher2_description:
+                    retry_character_instructions += f"{teacher2_name}: {teacher2_description}\n"
+                retry_character_instructions += "Speakers MUST maintain their character traits and speak in a way that's authentic to their descriptions while still focusing on the educational content.\n\n"
+            
             # More forceful prompt
             messages[1]["content"] = (
                 f"Create a VERY DETAILED conversation between {teacher1_name} and {teacher2_name} about:\n\n{input_text}\n\n"
+                f"{retry_character_instructions}"
                 f"STRICT REQUIREMENTS:\n"
                 f"1. The conversation MUST be EXACTLY {duration_seconds} seconds in duration when read aloud\n"
                 f"2. MUST contain {target_word_count} total words (3 words per second)\n"

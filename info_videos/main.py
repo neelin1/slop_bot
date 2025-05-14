@@ -11,7 +11,8 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
                                teacher1_style=None, teacher2_style=None,
                                teacher1_speed=None, teacher2_speed=None,
                                topic_images=None, image_topics=None, image_duration=10, duration_seconds=25,
-                               use_fallback_for_failed=True, is_summary_mode=False):
+                               use_fallback_for_failed=True, is_summary_mode=False,
+                               teacher1_description=None, teacher2_description=None):
     """
     Generate a conversation video with two teachers discussing a topic.
     
@@ -35,6 +36,8 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
         duration_seconds (int, optional): Target duration for the conversation (default: 25)
         use_fallback_for_failed (bool): Whether to use fallback voices for failed segments (default: True)
         is_summary_mode (bool): Whether to generate summarized content (True) or detailed technical content (False)
+        teacher1_description (str, optional): Description of the first teacher for image generation
+        teacher2_description (str, optional): Description of the second teacher for image generation
         
     Returns:
         str: Path to the generated video
@@ -43,6 +46,11 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
     from info_videos.fakeyou_audio import CHARACTER_VOICES
     
     print(f"Generating conversation video with teachers: {teacher1_name} and {teacher2_name}")
+    if teacher1_description:
+        print(f"Teacher 1 description: {teacher1_description}")
+    if teacher2_description:
+        print(f"Teacher 2 description: {teacher2_description}")
+        
     if is_summary_mode:
         print("Using summary mode: Characters will focus on clear, accessible explanations")
     else:
@@ -66,7 +74,12 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
     
     # 1. Generate teacher images
     print("Generating teacher images...")
-    teacher1_image_path, teacher2_image_path = generate_teachers_images(teacher1_name, teacher2_name)
+    teacher1_image_path, teacher2_image_path = generate_teachers_images(
+        teacher1_name, 
+        teacher2_name, 
+        teacher1_description=teacher1_description, 
+        teacher2_description=teacher2_description
+    )
     if not teacher1_image_path or not teacher2_image_path:
         print("❌ Failed to generate one or both teacher images. Aborting.")
         return None
@@ -79,7 +92,9 @@ def generate_conversation_video(teacher1_name, teacher2_name, input_text, output
         teacher1_name, 
         teacher2_name, 
         duration_seconds=duration_seconds,
-        is_summary_mode=is_summary_mode
+        is_summary_mode=is_summary_mode,
+        teacher1_description=teacher1_description,
+        teacher2_description=teacher2_description
     )
     if not conversation:
         print("❌ Failed to generate conversation script. Aborting.")

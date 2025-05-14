@@ -76,7 +76,7 @@ def get_character_description(name):
     
     return ""
 
-def generate_teacher_image(teacher_name, output_dir="info_videos/assets/teachers"):
+def generate_teacher_image(teacher_name, output_dir="info_videos/assets/teachers", character_description=None):
     """
     Generates an image of a teacher with white background and removes the background.
     Now supports cartoon and fictional characters with better prompts.
@@ -84,6 +84,7 @@ def generate_teacher_image(teacher_name, output_dir="info_videos/assets/teachers
     Args:
         teacher_name (str): Name of the teacher (e.g., "Professor Sarah Johnson")
         output_dir (str): Directory to save the images
+        character_description (str, optional): Custom description for the character
         
     Returns:
         str: Path to the generated transparent PNG of the teacher
@@ -97,7 +98,10 @@ def generate_teacher_image(teacher_name, output_dir="info_videos/assets/teachers
         return transparent_path
         
     # Generate prompt based on whether it's a fictional character
-    if is_fictional_character(teacher_name):
+    if character_description:
+        # Use the provided character description for custom fictional characters
+        prompt = f"High-quality image of {teacher_name}, {character_description}, against a plain white background, full-body, centered, professional quality"
+    elif is_fictional_character(teacher_name):
         character_desc = get_character_description(teacher_name)
         prompt = f"High-quality image of {teacher_name}, {character_desc}, against a plain white background, full-body, centered, professional quality"
     else:
@@ -124,7 +128,7 @@ def generate_teacher_image(teacher_name, output_dir="info_videos/assets/teachers
         print(f"❌ Failed to generate teacher image: {e}")
         return None
 
-def generate_teachers_images(teacher1_name, teacher2_name, output_dir="info_videos/assets/teachers"):
+def generate_teachers_images(teacher1_name, teacher2_name, output_dir="info_videos/assets/teachers", teacher1_description=None, teacher2_description=None):
     """
     Generates images for two teachers with white backgrounds and removes the backgrounds.
     
@@ -132,15 +136,17 @@ def generate_teachers_images(teacher1_name, teacher2_name, output_dir="info_vide
         teacher1_name (str): Name of the first teacher
         teacher2_name (str): Name of the second teacher
         output_dir (str): Directory to save the images
+        teacher1_description (str, optional): Custom description for the first teacher
+        teacher2_description (str, optional): Custom description for the second teacher
         
     Returns:
         tuple: Paths to the generated transparent PNGs of both teachers
     """
     print(f"Generating image for {teacher1_name}...")
-    teacher1_image = generate_teacher_image(teacher1_name, output_dir)
+    teacher1_image = generate_teacher_image(teacher1_name, output_dir, character_description=teacher1_description)
     
     print(f"Generating image for {teacher2_name}...")
-    teacher2_image = generate_teacher_image(teacher2_name, output_dir)
+    teacher2_image = generate_teacher_image(teacher2_name, output_dir, character_description=teacher2_description)
     
     return teacher1_image, teacher2_image
 

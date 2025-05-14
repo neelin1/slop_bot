@@ -7,6 +7,31 @@ from info_videos.main import generate_conversation_video
 from info_videos.image_generator import get_topic_collection
 from info_videos.utils import extract_text_from_pdf, verify_image_files
 
+# Function to generate description for a character
+def generate_character_description(char_name):
+    from slop_gen.utils.api_utils import openai_chat_api
+    
+    prompt = f"""Generate a concise, one-paragraph description of the fictional character {char_name}. 
+    If this is a well-known character, provide accurate details about their appearance, personality, and background.
+    If this appears to be a made-up character, create a compelling description that fits the name, with details about:
+    - Their appearance (height, build, distinctive features, clothing style)
+    - Their personality (temperament, speaking style, mannerisms) 
+    - Their background (occupation, origin, notable characteristics)
+    Keep the description under 100 words and focused on visual and vocal characteristics."""
+    
+    try:
+        response = openai_chat_api([
+            {"role": "system", "content": "You are a helpful assistant that provides concise character descriptions."},
+            {"role": "user", "content": prompt}
+        ], temperature=0.7)
+        
+        # Extract just the description from the response
+        description = response.strip()
+        return description
+    except Exception as e:
+        print(f"Warning: Failed to generate character description: {e}")
+        return f"A fictional character named {char_name}."
+
 def generate_character_conversation():
     """
     Generate a conversation video between two characters about a specific topic.
@@ -54,6 +79,13 @@ def generate_character_conversation():
         custom_images = verify_image_files(args.custom_images)
         print(f"Found {len(custom_images)} valid image files")
     
+    # List of known characters (used for reference but not for limiting character choices)
+    known_characters = [
+        "peter griffin", "quagmire", "homer simpson", "bart simpson", 
+        "stewie griffin", "wendy", "ronald mcdonald", "mickey mouse", 
+        "donald duck", "cercei lannister", "john pork", "eric cartman"
+    ]
+    
     # Process prompt if provided, or use a generic one for PDF content
     if args.prompt:
         prompt = args.prompt.lower()
@@ -62,16 +94,8 @@ def generate_character_conversation():
         character1 = "Wendy from Wendy's"  # Default
         character2 = "Ronald McDonald"     # Default
         topic = prompt
-        
-        # List of known characters (used only for voice selection, not for limiting character choices)
-        known_characters = [
-            "peter griffin", "quagmire", "homer simpson", "bart simpson", 
-            "stewie griffin", "wendy", "ronald mcdonald", "mickey mouse", 
-            "donald duck", "cercei lannister", "john pork", "eric cartman"
-        ]
-        
-        # Look for character patterns like "X talking to Y about Z"
-        # Note: using the global re module, no need to import it here
+        character1_description = None
+        character2_description = None
         
         # Create a comprehensive pattern for different conversation types
         conversation_keywords = (
@@ -87,7 +111,7 @@ def generate_character_conversation():
         )
         
         # Pattern 1: "X talking to Y about Z" - improved to capture multi-word names
-        talk_pattern = re.compile(f'((?:[\\w]+\\s?)+)\\s+{conversation_keywords}\\s+{relation_words}\\s+((?:[\\w]+\\s?)+)(?:\\s+about\\s+(.*)|$)', re.IGNORECASE)
+        talk_pattern = re.compile(f'((?:[\\w]+\\s?)+)\\s+{conversation_keywords}\\s+{relation_words}\\s+((?:[\\w]+\\s?)+?)(?:\\s+about\\s+(.+)|$)', re.IGNORECASE)
         match = talk_pattern.match(prompt)
         
         # Pattern 2: "X and Y discussing Z" - improved to capture multi-word names
@@ -123,12 +147,26 @@ def generate_character_conversation():
             
             print(f"Extracted characters: '{character1}' and '{character2}'")
             print(f"Extracted topic: '{topic}'")
+            
+            # Generate descriptions for characters not in the known list
+            character1_lower = character1.lower()
+            character2_lower = character2.lower()
+            
+            if not any(known_char in character1_lower for known_char in known_characters):
+                character1_description = generate_character_description(character1)
+                print(f"Generated description for '{character1}': {character1_description}")
+                
+            if not any(known_char in character2_lower for known_char in known_characters):
+                character2_description = generate_character_description(character2)
+                print(f"Generated description for '{character2}': {character2_description}")
     else:
         # Using PDF content, let's use default characters and extract topic from filename
         character1 = "Peter Griffin"  # Default for PDF mode
         character2 = "Homer Simpson"  # Default for PDF mode
         pdf_filename = os.path.basename(args.pdf)
         topic = os.path.splitext(pdf_filename)[0].replace('_', ' ').title()
+        character1_description = None
+        character2_description = None
         print(f"Using default characters: '{character1}' and '{character2}'")
         print(f"Using topic from PDF filename: '{topic}'")
     
@@ -180,6 +218,19 @@ def generate_character_conversation():
                 character2 = "Eric Cartman"
             
             print(f"Using characters from prompt: '{character1}' and '{character2}'")
+            
+            # Generate descriptions for characters not in the known list
+            character1_lower = character1.lower()
+            character2_lower = character2.lower()
+            
+            if not any(known_char in character1_lower for known_char in known_characters):
+                character1_description = generate_character_description(character1)
+                print(f"Generated description for '{character1}': {character1_description}")
+                
+            if not any(known_char in character2_lower for known_char in known_characters):
+                character2_description = generate_character_description(character2)
+                print(f"Generated description for '{character2}': {character2_description}")
+                
             # Keep the topic from PDF filename
         else:
             # Check if prompt just lists two characters
@@ -284,7 +335,7 @@ def generate_character_conversation():
         print(f"Created {len(image_topics)} image topics")
     
     # Select appropriate voices and attributes for each character
-    def select_voice(char_name):
+    def select_voice(char_name, description=None):
         char_lower = char_name.lower()
         
         # Default values
@@ -323,52 +374,97 @@ def generate_character_conversation():
             pitch = 3        # Higher pitch for child character
             style = "standard"
         else:
-            # For unknown characters, try to infer voice based on character traits
-            # Check for common gender indicators
-            female_indicators = ["woman", "female", "girl", "princess", "queen", "lady", "mrs", "ms", "miss", "mother", 
-                                "daughter", "sister", "aunt", "grandma", "grandmother", "wife", "goddess"]
-            male_indicators = ["man", "male", "boy", "prince", "king", "mr", "sir", "father", "dad", "son", 
-                              "brother", "uncle", "grandpa", "grandfather", "husband", "god"]
-            
-            # Check for age indicators
-            child_indicators = ["child", "kid", "baby", "infant", "toddler", "young", "little", "small", "tiny"]
-            elderly_indicators = ["elder", "old", "ancient", "senior", "aged", "elderly"]
-            
-            # Check for character type indicators
-            monster_indicators = ["monster", "beast", "creature", "demon", "dragon", "alien", "zombie", "ghost"]
-            robot_indicators = ["robot", "android", "machine", "ai", "artificial", "cyborg", "mechanical"]
-            animal_indicators = ["dog", "cat", "wolf", "bear", "lion", "tiger", "fox", "animal", "bird", "fish"]
-            
-            # Determine gender
-            if any(indicator in char_lower for indicator in female_indicators):
-                voice = "alloy"  # Female voice
-            elif any(indicator in char_lower for indicator in male_indicators):
-                voice = "echo"   # Male voice
-            
-            # Adjust pitch based on age/type
-            if any(indicator in char_lower for indicator in child_indicators):
-                pitch = 3  # Higher pitch for children
-                if "boy" in char_lower or any(m_ind in char_lower for m_ind in male_indicators):
-                    voice = "fable"  # Child-like voice
-            elif any(indicator in char_lower for indicator in elderly_indicators):
-                pitch = -2  # Lower pitch for elderly
-            elif any(indicator in char_lower for indicator in monster_indicators):
-                voice = "onyx"
-                pitch = -4  # Very low for monsters
-            elif any(indicator in char_lower for indicator in robot_indicators):
-                voice = "echo"
-                pitch = -1  # Slight robotic tone
-            elif any(indicator in char_lower for indicator in animal_indicators):
-                # Animals get varied voices
-                if "small" in char_lower or "tiny" in char_lower:
-                    pitch = 2  # Small animals get higher pitch
-                else:
-                    pitch = -2  # Large animals get lower pitch
+            # For unknown characters with a description, analyze the description to select voice
+            if description:
+                description_lower = description.lower()
+                
+                # Check for common gender indicators in the description
+                female_indicators = ["woman", "female", "girl", "princess", "queen", "lady", "mrs", "ms", "miss", "mother", 
+                                    "daughter", "sister", "aunt", "grandma", "grandmother", "wife", "goddess", "her", "she"]
+                male_indicators = ["man", "male", "boy", "prince", "king", "mr", "sir", "father", "dad", "son", 
+                                  "brother", "uncle", "grandpa", "grandfather", "husband", "god", "his", "he"]
+                
+                # Check for age indicators in the description
+                child_indicators = ["child", "kid", "baby", "infant", "toddler", "young", "little", "small", "tiny"]
+                elderly_indicators = ["elder", "old", "ancient", "senior", "aged", "elderly"]
+                
+                # Check for character type indicators in the description
+                monster_indicators = ["monster", "beast", "creature", "demon", "dragon", "alien", "zombie", "ghost"]
+                robot_indicators = ["robot", "android", "machine", "ai", "artificial", "cyborg", "mechanical"]
+                animal_indicators = ["dog", "cat", "wolf", "bear", "lion", "tiger", "fox", "animal", "bird", "fish"]
+                
+                # Determine gender from description
+                if any(indicator in description_lower for indicator in female_indicators):
+                    voice = "alloy"  # Female voice
+                elif any(indicator in description_lower for indicator in male_indicators):
+                    voice = "echo"   # Male voice
+                
+                # Adjust pitch based on description
+                if any(indicator in description_lower for indicator in child_indicators):
+                    pitch = 3  # Higher pitch for children
+                    if "boy" in description_lower or any(m_ind in description_lower for m_ind in male_indicators):
+                        voice = "fable"  # Child-like voice
+                elif any(indicator in description_lower for indicator in elderly_indicators):
+                    pitch = -2  # Lower pitch for elderly
+                elif any(indicator in description_lower for indicator in monster_indicators):
+                    voice = "onyx"
+                    pitch = -4  # Very low for monsters
+                elif any(indicator in description_lower for indicator in robot_indicators):
+                    voice = "echo"
+                    pitch = -1  # Slight robotic tone
+                elif any(indicator in description_lower for indicator in animal_indicators):
+                    # Animals get varied voices
+                    if "small" in description_lower or "tiny" in description_lower:
+                        pitch = 2  # Small animals get higher pitch
+                    else:
+                        pitch = -2  # Large animals get lower pitch
+            else:
+                # For unknown characters without a description, use name-based inference
+                # Check for common gender indicators
+                female_indicators = ["woman", "female", "girl", "princess", "queen", "lady", "mrs", "ms", "miss", "mother", 
+                                    "daughter", "sister", "aunt", "grandma", "grandmother", "wife", "goddess"]
+                male_indicators = ["man", "male", "boy", "prince", "king", "mr", "sir", "father", "dad", "son", 
+                                  "brother", "uncle", "grandpa", "grandfather", "husband", "god"]
+                
+                # Check for age indicators
+                child_indicators = ["child", "kid", "baby", "infant", "toddler", "young", "little", "small", "tiny"]
+                elderly_indicators = ["elder", "old", "ancient", "senior", "aged", "elderly"]
+                
+                # Check for character type indicators
+                monster_indicators = ["monster", "beast", "creature", "demon", "dragon", "alien", "zombie", "ghost"]
+                robot_indicators = ["robot", "android", "machine", "ai", "artificial", "cyborg", "mechanical"]
+                animal_indicators = ["dog", "cat", "wolf", "bear", "lion", "tiger", "fox", "animal", "bird", "fish"]
+                
+                # Determine gender
+                if any(indicator in char_lower for indicator in female_indicators):
+                    voice = "alloy"  # Female voice
+                elif any(indicator in char_lower for indicator in male_indicators):
+                    voice = "echo"   # Male voice
+                
+                # Adjust pitch based on age/type
+                if any(indicator in char_lower for indicator in child_indicators):
+                    pitch = 3  # Higher pitch for children
+                    if "boy" in char_lower or any(m_ind in char_lower for m_ind in male_indicators):
+                        voice = "fable"  # Child-like voice
+                elif any(indicator in char_lower for indicator in elderly_indicators):
+                    pitch = -2  # Lower pitch for elderly
+                elif any(indicator in char_lower for indicator in monster_indicators):
+                    voice = "onyx"
+                    pitch = -4  # Very low for monsters
+                elif any(indicator in char_lower for indicator in robot_indicators):
+                    voice = "echo"
+                    pitch = -1  # Slight robotic tone
+                elif any(indicator in char_lower for indicator in animal_indicators):
+                    # Animals get varied voices
+                    if "small" in char_lower or "tiny" in char_lower:
+                        pitch = 2  # Small animals get higher pitch
+                    else:
+                        pitch = -2  # Large animals get lower pitch
         
         return voice, pitch, style, speed
     
-    char1_voice, char1_pitch, char1_style, char1_speed = select_voice(character1)
-    char2_voice, char2_pitch, char2_style, char2_speed = select_voice(character2)
+    char1_voice, char1_pitch, char1_style, char1_speed = select_voice(character1, character1_description)
+    char2_voice, char2_pitch, char2_style, char2_speed = select_voice(character2, character2_description)
     
     # Generate output file name
     char1_name = character1.split()[0]
@@ -404,6 +500,10 @@ def generate_character_conversation():
     # Use PDF content if provided, otherwise generate from the topic
     if pdf_content:
         input_text = f"Create a conversation between {character1} and {character2} discussing the following educational content:\n\n{pdf_content}\n\n"
+        if character1_description:
+            input_text += f"{character1} is described as: {character1_description}\n\n"
+        if character2_description:
+            input_text += f"{character2} is described as: {character2_description}\n\n"
         input_text += f"The conversation should be EXACTLY {args.duration} seconds long when read aloud, "
         input_text += f"with approximately {target_word_count} total words. "
         input_text += f"Include at least {min_exchanges} exchanges between the characters (back-and-forth). "
@@ -413,6 +513,12 @@ def generate_character_conversation():
     else:
         input_text = (
             f"Create a conversation between {character1} and {character2} discussing: {topic}. "
+        )
+        if character1_description:
+            input_text += f"{character1} is described as: {character1_description} "
+        if character2_description:
+            input_text += f"{character2} is described as: {character2_description} "
+        input_text += (
             f"The conversation should be EXACTLY {args.duration} seconds long when read aloud, "
             f"with approximately {target_word_count} total words. "
             f"Include at least {min_exchanges} exchanges between the characters (back-and-forth). "
@@ -448,7 +554,10 @@ def generate_character_conversation():
         # Pass the no_fallback setting
         use_fallback_for_failed=not args.no_fallback,
         # Pass the summary mode
-        is_summary_mode=args.summary_mode
+        is_summary_mode=args.summary_mode,
+        # Pass character descriptions if available
+        teacher1_description=character1_description,
+        teacher2_description=character2_description
     )
     
     if video_path:
