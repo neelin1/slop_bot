@@ -3,7 +3,6 @@ import os
 import re
 import glob
 
-# Regular expressions for different types of comments
 INLINE_COMMENT = r'(?<!["\'\\])#.*$'  # Match inline comments not part of strings
 DOCSTRING_TRIPLE_SINGLE = r"'''(.*?)'''"  # Triple single quotes docstrings
 DOCSTRING_TRIPLE_DOUBLE = r'"""(.*?)"""'  # Triple double quotes docstrings
