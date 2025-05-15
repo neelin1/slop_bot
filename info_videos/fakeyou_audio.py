@@ -109,14 +109,14 @@ def generate_fakeyou_audio(text, output_file, character_name, max_retries=3):
                 response = session.get(poll_url)
 
                 if response.status_code != 200:
-                    print(f"❌ FakeYou poll error: HTTP {response.status_code}")
+                    print(f"FakeYou poll error: HTTP {response.status_code}")
                     print(response.text)
                     break
 
                 try:
                     data = response.json()
                 except Exception:
-                    print("❌ Failed to parse JSON from FakeYou response")
+                    print(" Failed to parse JSON from FakeYou response")
                     break
 
                 job_status = data.get('state', {}).get('status')
@@ -126,11 +126,11 @@ def generate_fakeyou_audio(text, output_file, character_name, max_retries=3):
                     job_success = True
                     break
                 elif job_status in ['dead', 'attempt_failed']:
-                    print(f"❌ FakeYou job failed with status: {job_status}")
+                    print(f" FakeYou job failed with status: {job_status}")
                     break
 
             if not job_success or not audio_path:
-                print("❌ FakeYou job completed but no audio path found.")
+                print(" FakeYou job completed but no audio path found.")
                 continue  # Try again if we have retries left
 
             # === DOWNLOAD THE AUDIO FILE (Try Both CDNs) ===
@@ -162,17 +162,17 @@ def generate_fakeyou_audio(text, output_file, character_name, max_retries=3):
                     download_success = True
                     return output_file
                 else:
-                    print(f"❌ Failed to download audio from both FakeYou CDNs (HTTP {audio_response.status_code})")
+                    print(f"Failed to download audio from both FakeYou CDNs (HTTP {audio_response.status_code})")
             except Exception as e:
-                print(f"❌ Exception during audio download: {str(e)}")
+                print(f"Exception during audio download: {str(e)}")
                 
             if not download_success:
                 continue  # Try again if we have retries left
                 
         except Exception as e:
-            print(f"❌ Exception during FakeYou processing: {str(e)}")
+            print(f"Exception during FakeYou processing: {str(e)}")
             # Continue to next retry attempt
     
     # If we get here, all retries have failed
-    print(f"❌ All {max_retries} retry attempts failed for {character_name}. Giving up.")
+    print(f"All {max_retries} retry attempts failed for {character_name}. Giving up.")
     return None 

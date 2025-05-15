@@ -14,7 +14,6 @@ FAKEYOU_PASSWORD = os.getenv("FAKEYOU_PASSWORD")
 CHARACTER_VOICE_TOKENS = {
     "peter griffin": "TM:3sk340a43q6n",  # Peter Griffin
     "homer simpson": "TM:c0caxchqrcwc",  # Homer Simpson
-    # Add more characters as needed
 }
 
 class FakeYouAPI:

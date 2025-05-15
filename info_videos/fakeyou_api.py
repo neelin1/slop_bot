@@ -77,7 +77,6 @@ class FakeYouSyncWrapper:
         try:
             print(f"Requesting TTS from FakeYou API for text: '{text[:30]}...'")
             
-            # Try using the say method first, which combines job creation and polling
             try:
                 print("Using 'say' method for direct TTS generation...")
                 result = self.fy.say(text, voice_token)
