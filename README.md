@@ -36,7 +36,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 Here's the usage example:
 
 ```bash
-python info_videos/character_talk.py --pdf info_videos/sample_pdfs/dartboard.pdf --prompt "Eric Cartman talking to Homer Simpson" --duration 90 --custom-images info_videos/sample_images/dartboard_paper.png info_videos/sample_images/dartboard.webp info_videos/sample_images/darts.png
+python character_talk.py --pdf info_videos/sample_pdfs/dartboard.pdf --prompt "Eric Cartman talking to Homer Simpson" --duration 90 --custom-images info_videos/sample_images/dartboard_paper.png info_videos/sample_images/dartboard.webp info_videos/sample_images/darts.png
 ```
 
 Or use the GUI version:
