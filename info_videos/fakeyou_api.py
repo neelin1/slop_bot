@@ -263,9 +263,9 @@ def test_fakeyou():
         result = generate_character_audio(character, text, output_path)
         
         if result:
-            print(f"✅ Success! Audio generated: {result}")
+            print(f"Success! Audio generated: {result}")
         else:
-            print(f"❌ Failed to generate audio for {character}")
+            print(f" Failed to generate audio for {character}")
 
 if __name__ == "__main__":
     test_fakeyou() 

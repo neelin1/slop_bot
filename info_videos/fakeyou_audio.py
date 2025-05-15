@@ -43,16 +43,16 @@ def generate_fakeyou_audio(text, output_file, character_name, max_retries=3):
         if retry_count > 0:
             # Only print retry message if this is a retry attempt
             backoff_time = 5 + random.randint(1, 5) * retry_count  # Exponential backoff with randomization
-            print(f"🔄 Retry attempt {retry_count}/{max_retries} for {character_name} after {backoff_time} seconds...")
+            print(f" Retry attempt {retry_count}/{max_retries} for {character_name} after {backoff_time} seconds...")
             time.sleep(backoff_time)  # Exponential backoff
         
         # Check if character is supported
         voice_token = CHARACTER_VOICES.get(character_name)
         if not voice_token:
-            print(f"❌ Character '{character_name}' is not supported by FakeYou integration.")
+            print(f"Character '{character_name}' is not supported by FakeYou integration.")
             return None
         
-        print(f"🎙️ Using FakeYou voice token: {voice_token} for {character_name}")
+        print(f" Using FakeYou voice token: {voice_token} for {character_name}")
         
         # Create directory for output file if it doesn't exist
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -69,7 +69,7 @@ def generate_fakeyou_audio(text, output_file, character_name, max_retries=3):
             login_response = session.post("https://api.fakeyou.com/v1/login", json=credentials)
 
             if login_response.status_code != 200:
-                print(f"❌ FakeYou login failed: {login_response.text}")
+                print(f"FakeYou login failed: {login_response.text}")
                 continue  # Try again if we have retries left
             
             # Add delay after login to avoid rate limiting
@@ -87,7 +87,7 @@ def generate_fakeyou_audio(text, output_file, character_name, max_retries=3):
             job_response = session.post("https://api.fakeyou.com/tts/inference", json=job_payload)
 
             if job_response.status_code != 200:
-                print(f"❌ Failed to start FakeYou TTS job: {job_response.text}")
+                print(f"Failed to start FakeYou TTS job: {job_response.text}")
                 continue  # Try again if we have retries left
 
             inference_job_token = job_response.json().get("inference_job_token")

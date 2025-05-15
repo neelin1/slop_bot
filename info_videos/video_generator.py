@@ -94,7 +94,7 @@ def create_conversation_video(
         if audio_clips:
             combined_audio = concatenate_audioclips(audio_clips)
         else:
-            print("❌ No audio clips to combine.")
+            print(" No audio clips to combine.")
             return None
         
         # Create clips list

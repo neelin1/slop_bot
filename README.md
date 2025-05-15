@@ -39,7 +39,7 @@ Here's the usage example:
 python character_talk.py --pdf info_videos/sample_pdfs/dartboard.pdf --prompt "Eric Cartman talking to Homer Simpson" --duration 90 --custom-images info_videos/sample_images/dartboard_paper.png info_videos/sample_images/dartboard.webp info_videos/sample_images/darts.png
 ```
 
-Or use the GUI version:
+Or use the GUI version to use many of your other favorite characters.
 
 ```bash
 python info_videos/character_talk_gui.py
@@ -61,6 +61,7 @@ Before running the tool, make sure you have:
 1. Python 3.8+ installed
 2. Required Python packages (install via `pip install -r requirements.txt`)
 3. API keys for OpenAI and Google Imagen (for content and image generation)
+4. FakeYou account and password
 
 ## Command Line Options
 

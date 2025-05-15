@@ -365,7 +365,7 @@ def main():
     
     if args.mode == "conversation":
         if not args.teacher1 or not args.teacher2:
-            print("❌ For conversation mode, both --teacher1 and --teacher2 are required")
+            print(" For conversation mode, both --teacher1 and --teacher2 are required")
             return
         generate_conversation_video(
             args.teacher1, 
@@ -387,7 +387,7 @@ def main():
         )
     else:  # single mode
         if not args.teacher:
-            print("❌ For single mode, --teacher is required")
+            print(" For single mode, --teacher is required")
             return
         generate_info_video(
             args.teacher, 
